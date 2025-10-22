@@ -1,0 +1,226 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* =========================
+   🌈 Root Variables (HSL)
+   ========================= */
+:root {
+  --background: 0 0% 100%;
+    --foreground: 222.2 84% 4.9%;
+    --card: 0 0% 100%;
+    --card-foreground: 222.2 84% 4.9%;
+    --popover: 0 0% 100%;
+    --popover-foreground: 222.2 84% 4.9%;
+    --primary: 221.2 83.2% 53.3%;
+    --primary-foreground: 210 40% 98%;
+    --secondary: 210 40% 96.1%;
+    --secondary-foreground: 222.2 47.4% 11.2%;
+    --muted: 210 40% 96.1%;
+    --muted-foreground: 215.4 16.3% 46.9%;
+    --accent: 210 40% 96.1%;
+    --accent-foreground: 222.2 47.4% 11.2%;
+    --destructive: 0 84.2% 60.2%;
+    --destructive-foreground: 210 40% 98%;
+    --border: 214.3 31.8% 91.4%;
+    --input: 214.3 31.8% 91.4%;
+    --ring: 221.2 83.2% 53.3%;
+    --radius: 0.5rem;
+  }
+  
+  /* =========================
+     🌐 Base Layer
+     ========================= */
+  @layer base {
+    * {
+      @apply border-[#e5e5e5];
+    }
+  
+    body {
+      background-color: hsl(var(--background));
+      color: hsl(var(--foreground));
+    }
+  }
+  
+  /* =========================
+     🧩 Component Layer
+     ========================= */
+  @layer components {
+  
+    /* Layout & Utilities */
+    .max-width {
+      @apply max-w-[1440px] mx-auto;
+    }
+  
+    .padding-x {
+      @apply sm:px-16 px-6;
+    }
+  
+    .padding-y {
+      @apply py-4;
+    }
+  
+    .flex-center {
+      @apply flex items-center justify-center;
+    }
+  
+    .flex-between {
+      @apply flex items-center justify-between;
+    }
+  
+    /* Buttons */
+    .custom-btn {
+      @apply flex flex-row relative justify-center items-center py-3 px-6 outline-none;
+    }
+  
+    .btn {
+      @apply custom-btn text-white;
+    }
+  
+    .btn-primary {
+      @apply bg-primary-blue rounded-full mt-10;
+    }
+  
+    .btn-secondary {
+      @apply bg-white text-primary-blue rounded-full mt-10;
+    }
+  
+    .btn-disabled {
+      @apply bg-primary-blue/50 rounded-full mt-10 cursor-not-allowed;
+    }
+  
+    /* Hero Section */
+    .hero {
+      @apply flex xl:flex-row flex-col gap-5 relative z-0 max-w-[1440px] mx-auto;
+    }
+  
+    .hero__title {
+      @apply 2xl:text-[72px] sm:text-[64px] text-[50px] font-extrabold;
+    }
+  
+    .hero__subtitle {
+      @apply text-[27px] text-black-100 font-light mt-5;
+    }
+  
+    .hero__image-container {
+      @apply xl:flex-[1.5] flex justify-end items-end w-full xl:h-screen;
+    }
+  
+    .hero__image {
+      @apply relative xl:w-full w-[90%] xl:h-full h-[590px] z-0;
+    }
+  
+    .hero__image-overlay {
+      @apply absolute xl:-top-24 xl:-right-1/2 -right-1/4 bg-repeat-round -z-10 w-full xl:h-screen h-[590px] overflow-hidden opacity-30;
+      background: linear-gradient(to right, transparent 0%, theme('colors.white') 100%);
+    }
+  
+    /* Home Section */
+    .home__text-container {
+      @apply flex flex-col items-start justify-start gap-y-2.5 text-black-100;
+    }
+  
+    .home__filters {
+      @apply mt-12 w-full flex-between items-center flex-wrap gap-5;
+    }
+  
+    .home__filter-container {
+      @apply flex justify-start flex-wrap items-center gap-2;
+    }
+  
+    .home__vehicles-wrapper {
+      @apply grid 2xl:grid-cols-4 xl:grid-cols-3 md:grid-cols-2 sm:grid-cols-1 w-full gap-6 pt-0;
+    }
+  
+    .home__error-container {
+      @apply mt-16 flex justify-center items-center flex-col gap-2;
+    }
+  
+    /* Search Bar */
+    .searchbar {
+      @apply flex items-center justify-start max-sm:flex-col w-full relative max-sm:gap-4 max-w-3xl bg-white rounded-full shadow-md;
+    }
+  
+    .searchbar__item {
+      @apply flex-1 max-sm:w-full flex justify-start items-center relative;
+    }
+  
+    .searchbar__item:first-child {
+      @apply border-r border-gray-300;
+    }
+  
+    .searchbar__item:first-child .search-manufacturer__input {
+      @apply rounded-l-full border-r-0;
+    }
+  
+    .searchbar__item:last-child .searchbar__input {
+      @apply rounded-r-full border-l-0;
+    }
+  
+    .searchbar__input {
+      @apply w-full h-[48px] pl-12 p-4 bg-white outline-none cursor-pointer text-sm;
+    }
+  
+    .search-manufacturer {
+      @apply flex-1 max-sm:w-full flex justify-start items-center relative;
+    }
+  
+    .search-manufacturer__input {
+      @apply w-full h-[48px] pl-12 p-4 bg-white outline-none cursor-pointer text-sm;
+    }
+  
+    .search-manufacturer__options {
+      @apply absolute mt-1 max-h-60 w-full overflow-auto rounded-md bg-white py-1 text-base shadow-lg ring-1 ring-black ring-opacity-5 focus:outline-none sm:text-sm z-20;
+      top: 100%;
+      left: 0;
+    }
+  
+    .search-manufacturer__option {
+      @apply cursor-default select-none py-2 pl-10 pr-4 text-gray-900 hover:bg-gray-100;
+    }
+  
+    /* Custom Filter */
+    .custom-filter {
+      @apply relative w-fit;
+    }
+  
+    .custom-filter__btn {
+      @apply relative w-full min-w-[127px] flex justify-between items-center cursor-pointer rounded-lg bg-white py-2 px-3 text-left shadow-md sm:text-sm border;
+    }
+  
+    .custom-filter__options {
+      @apply absolute mt-1 max-h-60 w-full overflow-auto rounded-lg bg-white py-1 text-base shadow-lg ring-1 ring-black ring-opacity-5 focus:outline-none sm:text-sm z-20;
+      top: 100%;
+      left: 0;
+    }
+  
+    /* Car Card */
+    .car-card {
+      @apply flex flex-col p-6 justify-center items-start text-black-100 bg-white rounded-3xl shadow-md;
+    }
+  
+    .car-card__content {
+      @apply w-full flex justify-between items-start gap-2;
+    }
+
+    .car-card__content-title {
+      @apply text-[22px] leading-[26px] font-bold capitalize;
+    }
+
+    .car-card__btn-container {
+      @apply hidden group-hover:flex absolute bottom-0 w-full z-10;
+  }
+}
+
+/* Hide scrollbar for Chrome, Safari and Opera */
+.no-scrollbar::-webkit-scrollbar {
+  display: none;
+}
+
+/* Hide scrollbar for IE, Edge and Firefox */
+.no-scrollbar {
+  -ms-overflow-style: none;
+  /* IE and Edge */
+  scrollbar-width: none;
+  /* Firefox */
+}
