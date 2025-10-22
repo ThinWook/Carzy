@@ -39,8 +39,8 @@ export function middleware(request: NextRequest) {
     const userData = JSON.parse(decodeURIComponent(userDataCookie))
     
     // Kiểm tra token có hết hạn không
-    const tokenExpiry = userData.exp // Giả sử userData chứa thông tin về thời gian hết hạn
-    const currentTime = Math.floor(Date.now() / 1000) // Thời gian hiện tại tính bằng giây
+    const tokenExpiry = userData.exp
+    const currentTime = Math.floor(Date.now() / 1000)
     
     if (tokenExpiry && currentTime > tokenExpiry) {
       console.log('Token đã hết hạn, chuyển hướng về trang đăng nhập')

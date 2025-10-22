@@ -10,6 +10,7 @@
     "api": "cd packages/api && npm run dev",
     "admin": "cd packages/admin && npm run dev",
     "dev": "concurrently \"npm run web\" \"npm run api\" \"npm run admin\"",
+    "test": "jest -c jest.config.js",
     "clean-reinstall": "npm run clean && npm install --force",
     "clean": "rimraf node_modules packages/*/node_modules"
   },
@@ -70,6 +71,7 @@
     "jest": "^29.7.0",
     "nodemon": "^3.0.1",
     "postcss": "^8",
+    "puppeteer": "^24.23.0",
     "rimraf": "^5.0.10",
     "tailwindcss": "^4.0.0",
     "typescript": "^5"

@@ -70,16 +70,6 @@ class ExternalVehicleService {
       throw error;
     }
   }
-
-  async searchVehicles(query) {
-    try {
-      // Implement external vehicle search API if needed
-      return [];
-    } catch (error) {
-      console.error('Error searching vehicles:', error);
-      throw error;
-    }
-  }
 }
 
 module.exports = new ExternalVehicleService(); 
