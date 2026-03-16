@@ -27,7 +27,8 @@
     "multer-storage-cloudinary": "*",
     "socket.io": "*",
     "stripe": "*",
-    "tailwind-merge": "*"
+    "tailwind-merge": "*",
+    "winston": "^3.19.0"
   },
   "devDependencies": {
     "jest": "*",

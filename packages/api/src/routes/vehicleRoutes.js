@@ -38,6 +38,8 @@ const {
   getVehiclesForAdmin
 } = require('../controllers/vehicleController');
 
+const { createVehicleValidators } = require('../middleware/validators/vehicleValidators');
+
 // Thêm một controller mới để lấy phương tiện theo ID người dùng (cho admin)
 const userVehiclesByIdController = async (req, res) => {
   try {
@@ -60,7 +62,7 @@ const userVehiclesByIdController = async (req, res) => {
 // Routes
 router.route('/')
   .get(getAllVehicles)
-  .post(protect, verifiedKyc, createVehicle);
+  .post(protect, verifiedKyc, createVehicleValidators, createVehicle);
 
 router.route('/user')
   .get(protect, getUserVehicles);

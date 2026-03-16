@@ -13,13 +13,6 @@ cloudinary.config({
   api_secret: process.env.CLOUDINARY_API_SECRET,
 });
 
-// Debug Cloudinary configuration
-console.log('Cloudinary Configuration:', {
-  cloud_name: process.env.CLOUDINARY_CLOUD_NAME,
-  api_key_length: process.env.CLOUDINARY_API_KEY ? process.env.CLOUDINARY_API_KEY.length : 0,
-  api_secret_length: process.env.CLOUDINARY_API_SECRET ? process.env.CLOUDINARY_API_SECRET.length : 0
-});
-
 // Configure multer storage for avatar uploads
 const avatarStorage = new CloudinaryStorage({
   cloudinary: cloudinary,
@@ -55,14 +48,6 @@ const kycDocumentsStorage = new CloudinaryStorage({
 
 const uploadKycDocuments = multer({ storage: kycDocumentsStorage });
 
-// Debug middleware to log upload requests
-const logUploadMiddleware = (req, res, next) => {
-  console.log('Upload request received:');
-  console.log('Headers:', req.headers);
-  console.log('Files before multer:', req.files);
-  next();
-};
-
 // Public routes
 router.post('/register', userController.registerUser);
 router.post('/login', userController.loginUser);
@@ -73,13 +58,13 @@ router.put('/profile', protect, userController.updateUserProfile);
 router.delete('/', protect, userController.deleteUser);
 
 // Avatar upload route
-router.post('/avatar', protect, logUploadMiddleware, uploadAvatar.single('avatar'), userController.updateUserAvatar);
+router.post('/avatar', protect, uploadAvatar.single('avatar'), userController.updateUserAvatar);
 
 // Cover image upload route
-router.post('/cover-image', protect, logUploadMiddleware, uploadCoverImage.single('coverImage'), userController.updateUserCoverImage);
+router.post('/cover-image', protect, uploadCoverImage.single('coverImage'), userController.updateUserCoverImage);
 
 // KYC document upload route
-router.post('/upload-kyc-documents', protect, logUploadMiddleware, uploadKycDocuments.fields([
+router.post('/upload-kyc-documents', protect, uploadKycDocuments.fields([
   { name: 'front', maxCount: 1 },
   { name: 'back', maxCount: 1 }
 ]), userController.uploadKycDocuments);

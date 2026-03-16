@@ -1,7 +1,10 @@
 const userService = require('../services/userService');
 const User = require('../models/User');
+const Vehicle = require('../models/Vehicle');
+const Favorite = require('../models/Favorite');
 const jwt = require('jsonwebtoken');
 const bcrypt = require('bcryptjs');
+const logger = require('../utils/logger');
 
 const userController = {
   // Register new user
@@ -211,25 +214,21 @@ const userController = {
   // Get user profile (current user)
   getUserProfile: async (req, res) => {
     try {
-      // Lấy thông tin user nhưng không bao gồm password_hash
       const user = await User.findById(req.user._id).select('-password_hash');
       
       if (!user) {
         return res.status(404).json({ message: 'Không tìm thấy người dùng' });
       }
       
-      // Đếm số lượng xe đã đăng và đã duyệt
-      const vehicleCount = await require('../models/Vehicle').countDocuments({ 
+      const vehicleCount = await Vehicle.countDocuments({ 
         user: user._id,
         status: 'approved'
       });
       
-      // Đếm số lượng xe yêu thích
-      const favoriteCount = await require('../models/Favorite').countDocuments({
+      const favoriteCount = await Favorite.countDocuments({
         user: user._id
       });
       
-      // Tạo đối tượng phản hồi từ thông tin người dùng
       const userResponse = {
         ...user.toObject(),
         vehicle_count: vehicleCount,
@@ -238,7 +237,7 @@ const userController = {
       
       res.json(userResponse);
     } catch (error) {
-      console.error('Error in getUserProfile:', error);
+      logger.error('Error in getUserProfile', { error: error.message });
       res.status(500).json({ message: 'Lỗi server' });
     }
   },
@@ -286,12 +285,7 @@ const userController = {
   // Update user avatar
   updateUserAvatar: async (req, res) => {
     try {
-      console.log('Upload avatar request received');
-      console.log('User:', req.user);
-      console.log('Files:', req.file);
-
       if (!req.file) {
-        console.log('No file uploaded');
         return res.status(400).json({ message: 'Please upload a file' });
       }
 
@@ -300,17 +294,16 @@ const userController = {
         return res.status(404).json({ message: 'User not found' });
       }
 
-      // Update avatar field
       user.avatar_url = req.file.path;
       await user.save();
 
-      console.log('Upload successful. New avatar:', user.avatar_url);
+      logger.info('Avatar updated', { userId: user._id });
       res.json({ 
         avatar_url: user.avatar_url,
         message: 'Avatar updated successfully' 
       });
     } catch (error) {
-      console.error('Upload error:', error);
+      logger.error('Avatar upload error', { error: error.message });
       res.status(500).json({ message: error.message });
     }
   },
@@ -318,12 +311,7 @@ const userController = {
   // Update user cover image
   updateUserCoverImage: async (req, res) => {
     try {
-      console.log('Upload cover image request received');
-      console.log('User:', req.user);
-      console.log('Files:', req.file);
-
       if (!req.file) {
-        console.log('No file uploaded');
         return res.status(400).json({ message: 'Please upload a file' });
       }
 
@@ -332,17 +320,16 @@ const userController = {
         return res.status(404).json({ message: 'User not found' });
       }
 
-      // Update cover image field
       user.cover_image_url = req.file.path;
       await user.save();
 
-      console.log('Upload successful. New cover image:', user.cover_image_url);
+      logger.info('Cover image updated', { userId: user._id });
       res.json({ 
         cover_image_url: user.cover_image_url,
         message: 'Cover image updated successfully' 
       });
     } catch (error) {
-      console.error('Upload error:', error);
+      logger.error('Cover image upload error', { error: error.message });
       res.status(500).json({ message: error.message });
     }
   },
@@ -360,12 +347,7 @@ const userController = {
   // Upload KYC documents
   uploadKycDocuments: async (req, res) => {
     try {
-      console.log('Upload KYC documents request received');
-      console.log('User:', req.user);
-      console.log('Files:', req.files);
-
       if (!req.files || (!req.files.front && !req.files.back)) {
-        console.log('No files uploaded');
         return res.status(400).json({ message: 'Please upload document images' });
       }
 
@@ -390,7 +372,7 @@ const userController = {
       
       await user.save();
 
-      console.log('Upload successful. New documents:', user.identity_document_images);
+      logger.info('KYC documents uploaded', { userId: user._id });
       res.json({ 
         urls: {
           front: user.identity_document_images.front,
@@ -399,7 +381,7 @@ const userController = {
         message: 'KYC documents uploaded successfully' 
       });
     } catch (error) {
-      console.error('Upload error:', error);
+      logger.error('KYC upload error', { error: error.message });
       res.status(500).json({ message: error.message });
     }
   },
@@ -555,7 +537,7 @@ const userController = {
         }
       });
     } catch (error) {
-      console.error('Error in getUsers:', error);
+      logger.error('Error in getUsers', { error: error.message });
       res.status(500).json({ message: 'Lỗi server' });
     }
   },
@@ -598,7 +580,7 @@ const userController = {
         }
       });
     } catch (error) {
-      console.error('Error in toggleUserLock:', error);
+      logger.error('Error in toggleUserLock', { error: error.message });
       res.status(500).json({ message: 'Lỗi server' });
     }
   },
@@ -640,7 +622,7 @@ const userController = {
         }
       });
     } catch (error) {
-      console.error('Error in updateKycStatus:', error);
+      logger.error('Error in updateKycStatus', { error: error.message });
       res.status(500).json({ message: 'Lỗi server' });
     }
   },
@@ -678,7 +660,7 @@ const userController = {
         user
       });
     } catch (error) {
-      console.error('Error in getUserById:', error);
+      logger.error('Error in getUserById', { error: error.message });
       res.status(500).json({ message: 'Lỗi server' });
     }
   }

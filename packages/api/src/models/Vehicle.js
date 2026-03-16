@@ -154,4 +154,15 @@ vehicleSchema.pre('save', function(next) {
   next();
 });
 
+// Indexes để tăng tốc truy vấn
+vehicleSchema.index({ type: 1, status: 1 });        // Lọc xe theo loại + trạng thái
+vehicleSchema.index({ make: 1, model: 1 });          // Lọc theo hãng + model
+vehicleSchema.index({ price: 1 });                   // Sort/filter theo giá
+vehicleSchema.index({ user: 1, status: 1 });         // Xe của người dùng
+vehicleSchema.index({ location: 1 });                // Lọc theo địa điểm
+vehicleSchema.index(                                  // Full-text search
+  { title: 'text', make: 'text', model: 'text', description: 'text' },
+  { name: 'vehicle_text_search' }
+);
+
 module.exports = mongoose.model('Vehicle', vehicleSchema); 

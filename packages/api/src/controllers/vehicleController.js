@@ -1,14 +1,12 @@
 const Vehicle = require('../models/Vehicle');
 const notificationUtil = require('../utils/notificationUtil');
+const logger = require('../utils/logger');
 
 // @desc    Create a new vehicle
 // @route   POST /api/vehicles
 // @access  Private
-exports.createVehicle = async (req, res) => {
+exports.createVehicle = async (req, res, next) => {
   try {
-    console.log('Received create vehicle request');
-    console.log('User ID:', req.user?._id);
-
     if (!req.body) {
       return res.status(400).json({ message: 'Missing request body' });
     }
@@ -16,19 +14,6 @@ exports.createVehicle = async (req, res) => {
     if (!req.user) {
       return res.status(401).json({ message: 'User not authenticated' });
     }
-
-    // Log the basic data to debug
-    console.log('Vehicle data received:', {
-      title: req.body.title,
-      description: req.body.description?.substring(0, 20) + '...',
-      type: req.body.type,
-      make: req.body.make,
-      model: req.body.model,
-      year: req.body.year,
-      price: req.body.price,
-      hasImages: !!req.body.images,
-      imagesCount: req.body.images?.length || 0
-    });
 
     // Create a basic vehicle object WITHOUT any images or large data
     const basicVehicleData = {
@@ -52,18 +37,16 @@ exports.createVehicle = async (req, res) => {
     };
 
     try {
-      console.log('Creating vehicle with basic data');
       const vehicle = await Vehicle.create(basicVehicleData);
-      console.log('Vehicle created successfully with ID:', vehicle._id);
+      logger.info('Vehicle created', { vehicleId: vehicle._id, userId: req.user._id });
       
-      // Return success immediately after creating basic vehicle
       return res.status(201).json({
         _id: vehicle._id,
         title: vehicle.title,
         message: 'Vehicle created successfully'
       });
     } catch (dbError) {
-      console.error('Database error creating vehicle:', dbError);
+      logger.error('Database error creating vehicle', { error: dbError.message });
       
       if (dbError.name === 'ValidationError') {
         const fields = Object.keys(dbError.errors);
@@ -77,7 +60,7 @@ exports.createVehicle = async (req, res) => {
       throw dbError;
     }
   } catch (error) {
-    console.error('Error creating vehicle:', error);
+    logger.error('Error creating vehicle', { error: error.message });
     
     // Kiểm tra cụ thể lỗi từ mongoose để trả về thông báo phù hợp
     if (error.name === 'ValidationError') {
@@ -97,8 +80,7 @@ exports.createVehicle = async (req, res) => {
       });
     }
     
-    // Generic error, return a 500
-    res.status(500).json({ message: error.message || 'Error creating vehicle' });
+    next(error);
   }
 };
 
@@ -266,25 +248,15 @@ exports.deleteVehicle = async (req, res) => {
 // @access  Private
 exports.uploadVehicleImages = async (req, res) => {
   try {
-    console.log('Upload request received');
-    console.log('User:', req.user);
-    console.log('Files:', req.files);
-    console.log('Cloudinary config:', {
-      cloud_name: process.env.CLOUDINARY_CLOUD_NAME,
-      api_key_length: process.env.CLOUDINARY_API_KEY ? process.env.CLOUDINARY_API_KEY.length : 0,
-      api_secret_length: process.env.CLOUDINARY_API_SECRET ? process.env.CLOUDINARY_API_SECRET.length : 0
-    });
-
     if (!req.files) {
-      console.log('No files uploaded');
       return res.status(400).json({ message: 'Please upload files' });
     }
 
     const urls = req.files.map(file => file.path);
-    console.log('Upload successful. URLs:', urls);
+    logger.info('Vehicle images uploaded', { count: urls.length, userId: req.user?._id });
     res.json({ urls });
   } catch (error) {
-    console.error('Upload error:', error);
+    logger.error('Upload error', { error: error.message });
     res.status(500).json({ message: error.message });
   }
 };
@@ -377,7 +349,7 @@ exports.getVehiclesForAdmin = async (req, res) => {
       }
     });
   } catch (error) {
-    console.error('Error fetching admin vehicles:', error);
+    logger.error('Error fetching admin vehicles', { error: error.message });
     res.status(500).json({ message: error.message });
   }
 }; 
