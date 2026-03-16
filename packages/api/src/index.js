@@ -3,8 +3,11 @@ const cors = require('cors');
 const dotenv = require('dotenv');
 const http = require('http');
 const socketIo = require('socket.io');
+const cookieParser = require('cookie-parser');
+const rateLimit = require('express-rate-limit');
 const connectDB = require('./config/database');
 const logger = require('./utils/logger');
+const requestLogger = require('./middleware/requestLogger');
 
 // Load env vars
 dotenv.config({ path: './.env' });
@@ -54,12 +57,27 @@ app.use(cors({
 // Xử lý preflight requests
 app.options('*', cors());
 
+// Thêm cookie-parser để đọc HttpOnly cookies
+app.use(cookieParser());
+
+// Thêm request logger toàn cục
+app.use(requestLogger);
+
 // Tăng kích thước tối đa cho request body
 app.use(express.json({ limit: '50mb' }));
 app.use(express.urlencoded({ extended: true, limit: '50mb' }));
 
+// Rate limiter cho các api auth để chống brute force
+const authLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000, // 15 phút
+  max: 10, // Giới hạn 10 requests mỗi IP
+  message: { message: 'Quá nhiều yêu cầu đăng nhập từ IP này, vui lòng thử lại sau 15 phút' },
+  standardHeaders: true,
+  legacyHeaders: false,
+});
+
 // Routes
-app.use('/api/auth', authRoutes);
+app.use('/api/auth', authLimiter, authRoutes);
 app.use('/api/vehicles', vehicleRoutes);
 app.use('/api/users', userRoutes);
 app.use('/api/chat', chatRoutes);

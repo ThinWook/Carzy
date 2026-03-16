@@ -12,6 +12,29 @@ class AuthService {
   }
 
   /**
+   * Attach a JWT token to the response via HttpOnly cookie.
+   */
+  attachTokenCookie(res, token) {
+    res.cookie('token', token, {
+      httpOnly: true,
+      secure: process.env.NODE_ENV === 'production',
+      sameSite: process.env.NODE_ENV === 'production' ? 'lax' : 'strict',
+      maxAge: 30 * 24 * 60 * 60 * 1000, // 30 days
+    });
+  }
+
+  /**
+   * Clear the HttpOnly token cookie.
+   */
+  clearTokenCookie(res) {
+    res.clearCookie('token', {
+      httpOnly: true,
+      secure: process.env.NODE_ENV === 'production',
+      sameSite: process.env.NODE_ENV === 'production' ? 'lax' : 'strict',
+    });
+  }
+
+  /**
    * Sign a JWT refresh token (longer-lived, separate secret).
    */
   generateRefreshToken(userId, expiresIn = '30d') {

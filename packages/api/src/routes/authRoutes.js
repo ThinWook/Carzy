@@ -10,6 +10,9 @@ router.post('/register', registerValidators, authController.register);
 // POST /api/auth/login
 router.post('/login', loginValidators, authController.login);
 
+// POST /api/auth/logout
+router.post('/logout', authController.logout);
+
 // GET /api/auth/current-user (protected)
 router.get('/current-user', protect, authController.getCurrentUser);
 

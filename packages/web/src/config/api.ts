@@ -15,6 +15,7 @@ export const endpoints = {
   auth: {
     login: `${API_URL}/auth/login`,
     register: `${API_URL}/auth/register`,
+    logout: `${API_URL}/auth/logout`,
     refreshToken: `${API_URL}/auth/refresh-token`,
     currentUser: `${API_URL}/auth/current-user`,
     updateProfile: `${API_URL}/users/profile`,

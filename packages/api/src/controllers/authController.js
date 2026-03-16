@@ -8,6 +8,8 @@ const authController = {
   register: async (req, res, next) => {
     try {
       const { user, token } = await authService.register(req.body);
+      authService.attachTokenCookie(res, token);
+      
       res.status(201).json({
         _id: user._id,
         full_name: user.full_name,
@@ -19,7 +21,7 @@ const authController = {
         cover_image_url: user.cover_image_url,
         rating: user.rating,
         created_at: user.created_at,
-        token,
+        token: process.env.NODE_ENV === 'development' ? token : undefined, // Chỉ trả về token ở dev mode (fallback ngộ nhỡ FE chưa sửa xong)
       });
     } catch (error) {
       next(error);
@@ -29,6 +31,8 @@ const authController = {
   login: async (req, res, next) => {
     try {
       const { user, token } = await authService.login(req.body.email, req.body.password);
+      authService.attachTokenCookie(res, token);
+      
       res.json({
         _id: user._id,
         full_name: user.full_name,
@@ -40,16 +44,22 @@ const authController = {
         cover_image_url: user.cover_image_url,
         rating: user.rating,
         created_at: user.created_at,
-        token,
+        token: process.env.NODE_ENV === 'development' ? token : undefined, 
       });
     } catch (error) {
       next(error);
     }
   },
 
+  logout: (req, res) => {
+    authService.clearTokenCookie(res);
+    res.json({ message: 'Đăng xuất thành công' });
+  },
+
   loginAdmin: async (req, res, next) => {
     try {
       const { user, token, refreshToken } = await authService.loginAdmin(req.body.email, req.body.password);
+      // Admin vẫn dùng token response (theo flow cũ)
       res.json({
         _id: user._id,
         full_name: user.full_name,
