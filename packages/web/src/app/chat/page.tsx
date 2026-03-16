@@ -5,8 +5,7 @@ import { useAuth } from '@/contexts/AuthContext'
 import Link from 'next/link'
 import Image from 'next/image'
 import { MagnifyingGlassIcon } from '@heroicons/react/24/outline'
-import axios from 'axios'
-import { endpoints } from '@/config/api'
+import { chatApi } from '@/services/chatApi'
 import { toast } from 'react-hot-toast'
 
 type Chat = {
@@ -40,21 +39,10 @@ export default function ChatPage() {
           return
         }
 
-        const token = localStorage.getItem('token')
-        if (!token) {
-          setChats([])
-          setIsLoading(false)
-          return
-        }
-
-        const response = await axios.get(endpoints.chat.list, {
-          headers: {
-            Authorization: `Bearer ${token}`
-          }
-        })
+        const responseData = await chatApi.getList()
 
         // Chuyển đổi dữ liệu từ API sang định dạng cần thiết
-        const chatData = response.data.map((chat: any) => {
+        const chatData = responseData.map((chat: any) => {
           const otherParticipant = chat.participants.find((p: any) => p._id !== user._id) || {}
           
           return {

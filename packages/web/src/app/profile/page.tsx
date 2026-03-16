@@ -5,8 +5,7 @@ import { useRouter } from 'next/navigation'
 import { useAuth } from '@/contexts/AuthContext'
 import Link from 'next/link'
 import { ShareIcon } from '@heroicons/react/24/outline'
-import axios from 'axios'
-import { endpoints } from '@/config/api'
+import { vehicleApi } from '@/services/vehicleApi'
 
 export default function Profile() {
   const { user, isAuthenticated, isLoading, refreshUserData } = useAuth()
@@ -36,19 +35,7 @@ export default function Profile() {
           // Make sure user data is refreshed first to ensure token is valid
           await refreshUserData();
           
-          const token = localStorage.getItem('token');
-          if (!token) {
-            console.error('No authentication token found');
-            router.push('/auth/login');
-            return;
-          }
-          
-          const { data } = await axios.get(endpoints.vehicles.userVehicles, {
-            headers: {
-              'Authorization': `Bearer ${token}`,
-              'Content-Type': 'application/json'
-            }
-          });
+          const data = await vehicleApi.getUserVehicles();
           
           // Make sure we received valid data
           if (data && Array.isArray(data)) {
@@ -64,13 +51,12 @@ export default function Profile() {
               sold: soldVehicles.length
             });
           }
-        } catch (error) {
+        } catch (error: any) {
           console.error('Error fetching user vehicles:', error);
           
           // Handle 401 Unauthorized specifically
-          if (axios.isAxiosError(error) && error.response?.status === 401) {
-            // Token is invalid or expired - clear it and redirect
-            localStorage.removeItem('token');
+          if (error.response?.status === 401) {
+            // Token is invalid or expired
             router.push('/auth/login');
           }
         }

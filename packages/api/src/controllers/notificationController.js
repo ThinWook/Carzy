@@ -1,50 +1,36 @@
 const notificationService = require('../services/notificationService');
-const { errorResponse, successResponse } = require('../utils/responseUtil');
+const { successResponse } = require('../utils/responseUtil');
+const { NotFoundError } = require('../utils/errors');
 
-/**
- * Lấy danh sách thông báo của người dùng hiện tại
- * @route GET /api/notifications
- */
-const getNotifications = async (req, res) => {
+const getNotifications = async (req, res, next) => {
   try {
     const userId = req.user._id;
     const page = parseInt(req.query.page) || 1;
     const limit = parseInt(req.query.limit) || 20;
     
     const result = await notificationService.getUserNotifications(userId, page, limit);
-    
     return successResponse(res, 'Lấy danh sách thông báo thành công', result);
   } catch (error) {
-    console.error('Lỗi khi lấy danh sách thông báo:', error);
-    return errorResponse(res, 'Không thể lấy danh sách thông báo', 500);
+    next(error);
   }
 };
 
-/**
- * Đánh dấu một thông báo đã đọc
- * @route PATCH /api/notifications/:id/read
- */
-const markNotificationAsRead = async (req, res) => {
+const markNotificationAsRead = async (req, res, next) => {
   try {
     const notificationId = req.params.id;
     const notification = await notificationService.markAsRead(notificationId);
     
     if (!notification) {
-      return errorResponse(res, 'Không tìm thấy thông báo', 404);
+      throw new NotFoundError('Không tìm thấy thông báo');
     }
     
     return successResponse(res, 'Đánh dấu thông báo đã đọc thành công', notification);
   } catch (error) {
-    console.error('Lỗi khi đánh dấu thông báo đã đọc:', error);
-    return errorResponse(res, 'Không thể đánh dấu thông báo đã đọc', 500);
+    next(error);
   }
 };
 
-/**
- * Đánh dấu tất cả thông báo của người dùng hiện tại đã đọc
- * @route PATCH /api/notifications/read-all
- */
-const markAllNotificationsAsRead = async (req, res) => {
+const markAllNotificationsAsRead = async (req, res, next) => {
   try {
     const userId = req.user._id;
     const result = await notificationService.markAllAsRead(userId);
@@ -53,24 +39,18 @@ const markAllNotificationsAsRead = async (req, res) => {
       modifiedCount: result.modifiedCount
     });
   } catch (error) {
-    console.error('Lỗi khi đánh dấu tất cả thông báo đã đọc:', error);
-    return errorResponse(res, 'Không thể đánh dấu tất cả thông báo đã đọc', 500);
+    next(error);
   }
 };
 
-/**
- * Lấy số lượng thông báo chưa đọc của người dùng hiện tại
- * @route GET /api/notifications/unread-count
- */
-const getUnreadCount = async (req, res) => {
+const getUnreadCount = async (req, res, next) => {
   try {
     const userId = req.user._id;
     const count = await notificationService.getUnreadCount(userId);
     
     return successResponse(res, 'Lấy số lượng thông báo chưa đọc thành công', { count });
   } catch (error) {
-    console.error('Lỗi khi lấy số lượng thông báo chưa đọc:', error);
-    return errorResponse(res, 'Không thể lấy số lượng thông báo chưa đọc', 500);
+    next(error);
   }
 };
 
@@ -79,4 +59,4 @@ module.exports = {
   markNotificationAsRead,
   markAllNotificationsAsRead,
   getUnreadCount
-}; 
+};

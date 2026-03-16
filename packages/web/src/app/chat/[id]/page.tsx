@@ -5,8 +5,7 @@ import { useAuth } from '@/contexts/AuthContext'
 import Link from 'next/link'
 import Image from 'next/image'
 import { ChevronLeftIcon, PaperAirplaneIcon, ArrowPathIcon } from '@heroicons/react/24/outline'
-import axios from 'axios'
-import { endpoints } from '@/config/api'
+import { chatApi } from '@/services/chatApi'
 import toast from 'react-hot-toast'
 
 type Participant = {
@@ -49,20 +48,7 @@ export default function ChatDetail({ params }: { params: { id: string } }) {
       }
 
       try {
-        const token = localStorage.getItem('token')
-        if (!token) {
-          toast.error('Bạn cần đăng nhập để xem tin nhắn')
-          return
-        }
-
-        const response = await axios.get(endpoints.chat.getById(params.id), {
-          headers: {
-            Authorization: `Bearer ${token}`
-          }
-        })
-
-        // Chuyển đổi dữ liệu từ API thành định dạng phù hợp
-        const chatData = response.data
+        const chatData = await chatApi.getById(params.id)
         
         const otherParticipant = chatData.participants.find((p: any) => p._id !== user._id) || {}
         
@@ -96,11 +82,7 @@ export default function ChatDetail({ params }: { params: { id: string } }) {
         setChat(formattedChat)
         
         // Đánh dấu tin nhắn đã đọc
-        await axios.put(endpoints.chat.markAsRead(params.id), {}, {
-          headers: {
-            Authorization: `Bearer ${token}`
-          }
-        })
+        await chatApi.markAsRead(params.id)
       } catch (error) {
         console.error('Lỗi khi tải dữ liệu chat:', error)
         toast.error('Không thể tải dữ liệu tin nhắn. Vui lòng thử lại sau.')
@@ -147,25 +129,8 @@ export default function ChatDetail({ params }: { params: { id: string } }) {
     setNewMessage('')
 
     try {
-      const token = localStorage.getItem('token')
-      if (!token) {
-        toast.error('Bạn cần đăng nhập để gửi tin nhắn')
-        return
-      }
-
       // Gửi tin nhắn lên server
-      const response = await axios.post(
-        endpoints.chat.sendMessage(chat._id),
-        { content: newMsg.content }, 
-        {
-          headers: {
-            Authorization: `Bearer ${token}`
-          }
-        }
-      )
-
-      // Cập nhật lại tin nhắn với ID chính thức từ server
-      const serverMsg = response.data
+      const serverMsg = await chatApi.sendMessage(chat._id, newMsg.content)
       setChat(prevChat => {
         if (!prevChat) return null
         

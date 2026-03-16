@@ -2,7 +2,7 @@ const reviewService = require('../services/reviewService');
 
 const reviewController = {
   // Create a new review
-  createReview: async (req, res) => {
+  createReview: async (req, res, next) => {
     try {
       const reviewData = {
         ...req.body,
@@ -11,55 +11,49 @@ const reviewController = {
       const review = await reviewService.createReview(reviewData);
       res.status(201).json(review);
     } catch (error) {
-      res.status(400).json({ message: error.message });
+      next(error);
     }
   },
 
   // Get reviews by user
-  getReviewsByUser: async (req, res) => {
+  getReviewsByUser: async (req, res, next) => {
     try {
       const reviews = await reviewService.getReviewsByUser(req.params.userId);
       res.json(reviews);
     } catch (error) {
-      res.status(500).json({ message: error.message });
+      next(error);
     }
   },
 
   // Get user rating
-  getUserRating: async (req, res) => {
+  getUserRating: async (req, res, next) => {
     try {
       const rating = await reviewService.getUserRating(req.params.userId);
       res.json(rating);
     } catch (error) {
-      res.status(500).json({ message: error.message });
+      next(error);
     }
   },
 
   // Update review
-  updateReview: async (req, res) => {
+  updateReview: async (req, res, next) => {
     try {
       const review = await reviewService.updateReview(req.params.id, req.body);
-      if (!review) {
-        return res.status(404).json({ message: 'Review not found' });
-      }
       res.json(review);
     } catch (error) {
-      res.status(400).json({ message: error.message });
+      next(error);
     }
   },
 
   // Delete review
-  deleteReview: async (req, res) => {
+  deleteReview: async (req, res, next) => {
     try {
-      const review = await reviewService.deleteReview(req.params.id);
-      if (!review) {
-        return res.status(404).json({ message: 'Review not found' });
-      }
-      res.json({ message: 'Review deleted successfully' });
+      await reviewService.deleteReview(req.params.id);
+      res.json({ message: 'Đánh giá đã được xóa thành công' });
     } catch (error) {
-      res.status(500).json({ message: error.message });
+      next(error);
     }
   }
 };
 
-module.exports = reviewController; 
+module.exports = reviewController;

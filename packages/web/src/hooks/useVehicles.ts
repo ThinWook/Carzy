@@ -1,6 +1,7 @@
 'use client'
 
 import { useState, useCallback } from 'react'
+import { vehicleApi } from '@/services/vehicleApi'
 
 interface Vehicle {
   _id: string
@@ -48,21 +49,16 @@ export function useVehicles() {
     setError(null)
 
     try {
-      const params = new URLSearchParams()
-      Object.entries(filters).forEach(([key, value]) => {
-        if (value !== undefined && value !== null && value !== '') {
-          params.set(key, String(value))
-        }
-      })
+      // vehicleApi request configures query params via axios automatically
+      const cleanFilters = Object.fromEntries(
+        Object.entries(filters).filter(([_, v]) => v !== undefined && v !== null && v !== '')
+      )
 
-      const response = await fetch(`/api/vehicles?${params}`)
-      if (!response.ok) throw new Error('Failed to fetch vehicles')
-
-      const data = await response.json()
+      const data = await vehicleApi.getAll(cleanFilters)
       setVehicles(data.vehicles || [])
       setPagination(data.pagination || null)
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'Unknown error')
+    } catch (err: any) {
+      setError(err?.response?.data?.message || err.message || 'Unknown error')
       setVehicles([])
     } finally {
       setIsLoading(false)

@@ -8,8 +8,7 @@ import * as yup from 'yup'
 import Image from 'next/image'
 import toast from 'react-hot-toast'
 import { useAuth } from '@/contexts/AuthContext'
-import { endpoints } from '@/config/api'
-import axios from 'axios'
+import { vehicleApi } from '@/services/vehicleApi'
 
 interface VehicleParams {
   id: string
@@ -51,7 +50,7 @@ export default function EditVehicle({ params }: { params: VehicleParams }) {
     reset,
     formState: { errors },
   } = useForm<VehicleFormData>({
-    resolver: yupResolver(schema),
+    resolver: yupResolver(schema) as any,
     mode: 'onBlur'
   })
   
@@ -60,18 +59,7 @@ export default function EditVehicle({ params }: { params: VehicleParams }) {
     const fetchVehicleData = async () => {
       try {
         setIsVehicleLoading(true)
-        const token = localStorage.getItem('token')
-        
-        const response = await axios.get(
-          `${endpoints.API_URL}/vehicles/${params.id}`,
-          {
-            headers: {
-              'Authorization': `Bearer ${token}`
-            }
-          }
-        )
-        
-        const vehicleData = response.data
+        const vehicleData = await vehicleApi.getById(params.id)
         
         // Cập nhật loại xe
         setVehicleType(vehicleData.type)
@@ -116,29 +104,12 @@ export default function EditVehicle({ params }: { params: VehicleParams }) {
     try {
       toast.loading('Đang tải lên hình ảnh...')
       
-      const token = localStorage.getItem('token')
-      if (!token) {
-        throw new Error('Không tìm thấy token xác thực')
-      }
-      
       const formData = new FormData()
-      
       Array.from(files).forEach(file => {
         formData.append('images', file)
       })
-      
-      const response = await axios.post(
-        endpoints.vehicles.upload,
-        formData,
-        {
-          headers: {
-            'Content-Type': 'multipart/form-data',
-            'Authorization': `Bearer ${token}`
-          }
-        }
-      )
-      
-      const uploadedUrls = response.data.urls
+      const data = await vehicleApi.uploadImages(formData)
+      const uploadedUrls = data.urls
       setImageUrls(prev => [...prev, ...uploadedUrls])
       
       toast.dismiss()
@@ -170,21 +141,7 @@ export default function EditVehicle({ params }: { params: VehicleParams }) {
         images: imageUrls,
       }
       
-      const token = localStorage.getItem('token')
-      if (!token) {
-        throw new Error('Không tìm thấy token xác thực')
-      }
-
-      const { data: responseData } = await axios.put(
-        `${endpoints.API_URL}/vehicles/${params.id}`, 
-        vehicleData,
-        {
-          headers: {
-            'Content-Type': 'application/json',
-            'Authorization': `Bearer ${token}`,
-          }
-        }
-      )
+      const responseData = await vehicleApi.update(params.id, vehicleData)
       
       toast.success(responseData.message || 'Cập nhật tin xe thành công')
       router.push('/my-vehicles')
@@ -230,7 +187,7 @@ export default function EditVehicle({ params }: { params: VehicleParams }) {
         </button>
       </div>
 
-      <form onSubmit={handleSubmit(onSubmit)} className="space-y-8">
+      <form onSubmit={handleSubmit(onSubmit as any)} className="space-y-8">
         {/* Thông tin cơ bản */}
         <div className="bg-white shadow overflow-hidden sm:rounded-lg">
           <div className="px-4 py-5 sm:px-6">

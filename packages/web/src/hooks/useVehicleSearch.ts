@@ -2,6 +2,7 @@
 
 import { useState, useCallback, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
+import { vehicleApi } from '@/services/vehicleApi'
 
 interface VehicleSearchResult {
   _id: string
@@ -37,13 +38,8 @@ export function useVehicleSearch() {
 
     try {
       const params = new URLSearchParams({ search: searchQuery.trim(), limit: '5' })
-      const response = await fetch(`/api/vehicles/quick-search?${params}`)
-      if (response.ok) {
-        const data = await response.json()
-        setResults(data.vehicles || [])
-      } else {
-        setResults([])
-      }
+      const data = await vehicleApi.search(params.toString())
+      setResults(data.vehicles || [])
     } catch {
       setResults([])
     } finally {

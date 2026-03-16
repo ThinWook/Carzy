@@ -2,8 +2,9 @@
 
 import { useState, useEffect, useRef } from 'react'
 import { useParams } from 'next/navigation'
-import { useAuth } from '@/hooks/useAuth'
+import { useAuth } from '@/contexts/AuthContext'
 import { io, Socket } from 'socket.io-client'
+import { chatApi } from '@/services/chatApi'
 
 type Message = {
   _id: string
@@ -42,12 +43,7 @@ export default function ChatWindow() {
   useEffect(() => {
     const fetchChat = async () => {
       try {
-        const response = await fetch(`http://localhost:5000/api/chat/${id}`, {
-          headers: {
-            Authorization: `Bearer ${localStorage.getItem('token')}`
-          }
-        })
-        const data = await response.json()
+        const data = await chatApi.getById(id as string)
         setChat(data)
         setMessages(data.messages)
       } catch (error) {
@@ -87,16 +83,7 @@ export default function ChatWindow() {
     if (!newMessage.trim()) return
 
     try {
-      const response = await fetch(`http://localhost:5000/api/chat/${id}/messages`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          Authorization: `Bearer ${localStorage.getItem('token')}`
-        },
-        body: JSON.stringify({ content: newMessage })
-      })
-
-      const data = await response.json()
+      const data = await chatApi.sendMessage(id as string, newMessage)
       setMessages(prev => [...prev, data])
       setNewMessage('')
     } catch (error) {

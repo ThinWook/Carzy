@@ -6,6 +6,7 @@ import Link from 'next/link'
 import { useAuth } from '@/contexts/AuthContext'
 import { useRouter } from 'next/navigation'
 import Image from 'next/image'
+import { chatApi } from '@/services/chatApi'
 
 type Chat = {
   _id: string
@@ -38,12 +39,7 @@ export default function ChatList() {
   useEffect(() => {
     const fetchChats = async () => {
       try {
-        const response = await fetch('http://localhost:5000/api/chat', {
-          headers: {
-            Authorization: `Bearer ${localStorage.getItem('token')}`
-          }
-        })
-        const data = await response.json()
+        const data = await chatApi.getList()
         setChats(data)
       } catch (error) {
         console.error('Error fetching chats:', error)

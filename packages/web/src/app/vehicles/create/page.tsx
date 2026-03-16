@@ -7,8 +7,7 @@ import { yupResolver } from '@hookform/resolvers/yup'
 import * as yup from 'yup'
 import toast from 'react-hot-toast'
 import { useAuth } from '@/contexts/AuthContext'
-import { endpoints } from '@/config/api'
-import axios from 'axios'
+import { vehicleApi } from '@/services/vehicleApi'
 
 interface User {
   _id: string;
@@ -177,7 +176,7 @@ export default function CreateVehicle() {
     setValue,
     formState: { errors },
   } = useForm<VehicleFormData>({
-    resolver: yupResolver(schema),
+    resolver: yupResolver(schema) as any,
     defaultValues: {
       currency: 'VND',
     },
@@ -274,37 +273,15 @@ export default function CreateVehicle() {
     try {
       toast.loading('Đang tải lên hình ảnh...');
       
-      // Lấy token xác thực từ localStorage
-      const token = localStorage.getItem('token');
-      if (!token) {
-        throw new Error('Không tìm thấy token xác thực');
-      }
-      
-      // Tạo FormData để tải lên file
       const formData = new FormData();
-      
-      // Thêm từng file vào formData
       Array.from(files).forEach(file => {
         formData.append('images', file);
       });
+      const data = await vehicleApi.uploadImages(formData);
       
-      // Gửi request tải lên đến API endpoint chuyên dụng
-      const response = await axios.post(
-        endpoints.vehicles.upload,
-        formData,
-        {
-          headers: {
-            'Content-Type': 'multipart/form-data',
-            'Authorization': `Bearer ${token}`
-          }
-        }
-      );
-      
-      // Lấy URLs từ phản hồi
-      const uploadedUrls = response.data.urls;
+      const uploadedUrls = data.urls;
       console.log('Uploaded image URLs:', uploadedUrls);
       
-      // Thêm các URL mới vào state
       setImageUrls(prev => [...prev, ...uploadedUrls]);
       
       toast.dismiss();
@@ -323,33 +300,14 @@ export default function CreateVehicle() {
     try {
       toast.loading(`Đang tải lên giấy tờ ${docType === 'registration' ? 'đăng ký' : 'đăng kiểm'}...`);
       
-      // Lấy token xác thực
-      const token = localStorage.getItem('token');
-      if (!token) {
-        throw new Error('Không tìm thấy token xác thực');
-      }
-      
-      // Tạo FormData
+      const fileArray = Array.from(files);
       const formData = new FormData();
-      formData.append('images', files[0]);
+      fileArray.forEach(file => formData.append('images', file));
+      const data = await vehicleApi.uploadImages(formData);
       
-      // Upload tài liệu qua API
-      const response = await axios.post(
-        endpoints.vehicles.upload,
-        formData,
-        {
-          headers: {
-            'Content-Type': 'multipart/form-data',
-            'Authorization': `Bearer ${token}`
-          }
-        }
-      );
-      
-      // Lấy URL từ phản hồi
-      const uploadedUrl = response.data.urls[0];
+      const uploadedUrl = data.urls[0];
       console.log(`Uploaded ${docType} URL:`, uploadedUrl);
       
-      // Cập nhật state và form value
       if (docType === 'registration') {
         setRegistrationDoc(uploadedUrl);
         setValue('registration_papers', uploadedUrl);
@@ -489,90 +447,30 @@ export default function CreateVehicle() {
         inspection_papers: vehicleData.inspection_papers ? 'Present' : 'Not provided'
       });
 
-      const token = localStorage.getItem('token');
-      if (!token) {
-        throw new Error('Không tìm thấy token xác thực');
-      }
-
-      // Check token
-      console.log('Using token:', token.substring(0, 10) + '...');
-
       try {
-        // Use axios instead of fetch
-        const { data: responseData } = await axios.post(
-          endpoints.vehicles.create, 
-          vehicleData,
-          {
-            headers: {
-              'Content-Type': 'application/json',
-              'Authorization': `Bearer ${token}`,
-            },
-            timeout: 60000, // Tăng timeout lên 60 giây vì có thể có nhiều ảnh
-            maxContentLength: 50 * 1024 * 1024, // Giới hạn kích thước request 50MB
-            maxBodyLength: 50 * 1024 * 1024, // Giới hạn kích thước body 50MB
-          }
-        );
-        
+        const responseData = await vehicleApi.create(vehicleData);
         console.log('Server response:', responseData);
         
-        // Hiển thị thông báo thành công
         toast.success(responseData.message || 'Đăng tin thành công');
         
-        // Cập nhật hình ảnh riêng sau khi đã tạo xe cơ bản thành công
-        if (responseData._id && imageUrls.length > 0) {
-          try {
-            // Tạm thời bỏ qua cập nhật hình ảnh để đảm bảo tạo xe thành công
-            console.log('Skipping image update for now to ensure vehicle creation success');
-            // Có thể sẽ thêm code cập nhật hình ảnh ở đây sau
-          } catch (imageError) {
-            console.error('Error updating images:', imageError);
-            // Vẫn chuyển hướng vì xe đã tạo thành công
-          }
-        }
-        
-        // Chuyển hướng sau khi tạo thành công
         router.push('/my-vehicles');
       } catch (axiosError: any) {
-        console.error('Axios error:', axiosError);
+        console.error('API error:', axiosError);
+        const errorData = axiosError.response?.data;
+        const statusCode = axiosError.response?.status;
         
-        // Xử lý lỗi chi tiết hơn
-        if (axiosError.response) {
-          // Server trả về response với status code nằm ngoài range 2xx
-          const errorData = axiosError.response.data;
-          const statusCode = axiosError.response.status;
-          
-          console.error(`Server error ${statusCode}:`, errorData);
-          
-          if (errorData.errors && Array.isArray(errorData.errors)) {
-            // Hiển thị tất cả các lỗi validation
-            errorData.errors.forEach((err: string) => {
-              toast.error(err);
-            });
-          } else if (errorData.message) {
-            toast.error(errorData.message);
-          } else {
-            toast.error(`Lỗi server (${statusCode})`);
-          }
-          
-          // Nếu lỗi liên quan đến kích thước request quá lớn
-          if (statusCode === 413 || (errorData.message && errorData.message.includes('size'))) {
-            toast.error('Hình ảnh có kích thước quá lớn, vui lòng giảm số lượng hoặc kích thước ảnh');
-          }
-        } else if (axiosError.request) {
-          // Request đã được gửi nhưng không nhận được response
-          console.error('No response received:', axiosError.request);
-          toast.error('Không nhận được phản hồi từ server');
+        if (errorData?.errors && Array.isArray(errorData.errors)) {
+          errorData.errors.forEach((err: string) => toast.error(err));
+        } else if (errorData?.message) {
+          toast.error(errorData.message);
         } else {
-          // Lỗi khi thiết lập request
-          toast.error('Lỗi khi gửi yêu cầu: ' + axiosError.message);
+          toast.error(`Lỗi server (${statusCode || 'Unknown'})`);
         }
         
-        // Nếu lỗi liên quan đến kích thước request quá lớn
-        if (axiosError.message && axiosError.message.includes('size')) {
+        if (statusCode === 413 || (errorData?.message && errorData.message.includes('size'))) {
           toast.error('Hình ảnh có kích thước quá lớn, vui lòng giảm số lượng hoặc kích thước ảnh');
         }
-        
-        throw new Error(axiosError.response?.data?.message || 'Không thể đăng tin');
+        throw new Error(errorData?.message || 'Không thể đăng tin');
       }
     } catch (error) {
       console.error('Submit error:', error);
@@ -629,11 +527,11 @@ export default function CreateVehicle() {
       </div>
 
       <form onSubmit={handleSubmit(
-        (data) => {
+        (data: any) => {
           console.log("Form submitted successfully", data);
           onSubmit(data);
         },
-        (errors) => {
+        (errors: any) => {
           console.error("Form validation errors:", errors);
           // If there are validation errors but we're just trying to go to next step, continue anyway
           if (currentStep < totalSteps) {

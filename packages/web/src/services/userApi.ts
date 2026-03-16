@@ -22,9 +22,7 @@ export const userApi = {
    * Upload avatar mới
    */
   updateAvatar: async (formData: FormData) => {
-    const { data } = await apiClient.post(endpoints.auth.uploadAvatar, formData, {
-      headers: { 'Content-Type': 'multipart/form-data' },
-    })
+    const { data } = await apiClient.post(endpoints.auth.uploadAvatar, formData)
     return data
   },
 
@@ -32,9 +30,7 @@ export const userApi = {
    * Upload ảnh bìa mới
    */
   updateCoverImage: async (formData: FormData) => {
-    const { data } = await apiClient.post(endpoints.auth.uploadCoverImage, formData, {
-      headers: { 'Content-Type': 'multipart/form-data' },
-    })
+    const { data } = await apiClient.post(endpoints.auth.uploadCoverImage, formData)
     return data
   },
 
@@ -42,9 +38,7 @@ export const userApi = {
    * Upload tài liệu KYC (CMND/CCCD)
    */
   uploadKycDocuments: async (formData: FormData) => {
-    const { data } = await apiClient.post(endpoints.kyc.uploadDocuments, formData, {
-      headers: { 'Content-Type': 'multipart/form-data' },
-    })
+    const { data } = await apiClient.post(endpoints.kyc.uploadDocuments, formData)
     return data
   },
 

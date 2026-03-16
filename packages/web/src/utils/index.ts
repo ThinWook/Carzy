@@ -1,5 +1,5 @@
 import { FilterProps } from '@/types';
-import { endpoints } from '@/config/api';
+import { vehicleApi } from '@/services/vehicleApi';
 
 export const calculateCarRent = (price: number) => {
   const carPrice = price;
@@ -56,15 +56,9 @@ const fetchVehicles = async (filters: FilterProps): Promise<PaginationResult<any
     params[key] === '' && delete params[key]
   );
 
-  const response = await fetch(
-    `${endpoints.vehicles.list}?${new URLSearchParams(params)}`
-  );
+  try {
+    const result = await vehicleApi.getAll(params);
 
-  if (!response.ok) {
-    throw new Error('Failed to fetch vehicles');
-  }
-
-  const result = await response.json();
   
   // Handle both old and new API response format
   if (result.vehicles && result.pagination) {
@@ -74,16 +68,19 @@ const fetchVehicles = async (filters: FilterProps): Promise<PaginationResult<any
     };
   }
   
-  // Legacy format handling
-  return { 
-    data: Array.isArray(result) ? result : [], 
-    pagination: {
-      total: Array.isArray(result) ? result.length : 0,
-      page: 1,
-      limit: 10,
-      pages: 1
-    }
-  };
+    // Legacy format handling
+    return { 
+      data: Array.isArray(result) ? result : [], 
+      pagination: {
+        total: Array.isArray(result) ? result.length : 0,
+        page: 1,
+        limit: 10,
+        pages: 1
+      }
+    };
+  } catch (error) {
+    throw new Error('Failed to fetch vehicles');
+  }
 };
 
 export { fetchVehicles }; 

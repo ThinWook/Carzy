@@ -2,8 +2,7 @@
 
 import { useState, useEffect } from 'react'
 import { useAuth } from '@/contexts/AuthContext'
-import { endpoints } from '@/config/api'
-import axios from 'axios'
+import { favoriteApi } from '@/services/favoriteApi'
 import { useRouter } from 'next/navigation'
 import toast from 'react-hot-toast'
 
@@ -22,22 +21,8 @@ export default function FavoriteButton({ vehicleId, className = '' }: FavoriteBu
     // Kiểm tra trạng thái yêu thích
     const checkFavoriteStatus = async () => {
       try {
-        // Kiểm tra xem user đã đăng nhập chưa
-        const token = localStorage.getItem('token')
-        if (!token || !vehicleId) return
-
-        console.log('Checking favorite status for vehicle:', vehicleId)
-        
-        // Gọi API kiểm tra trạng thái yêu thích
-        const response = await axios.get(endpoints.favorites.check(vehicleId), {
-          headers: {
-            Authorization: `Bearer ${token}`,
-            'Content-Type': 'application/json'
-          }
-        })
-
-        const { isFavorite } = response.data
-        console.log('Favorite status:', isFavorite)
+        if (!user || !vehicleId) return
+        const { isFavorite } = await favoriteApi.check(vehicleId)
         setIsFavorite(isFavorite)
       } catch (error) {
         console.error('Error checking favorite status:', error)
@@ -47,7 +32,7 @@ export default function FavoriteButton({ vehicleId, className = '' }: FavoriteBu
     if (vehicleId) {
       checkFavoriteStatus()
     }
-  }, [vehicleId])
+  }, [vehicleId, user])
 
   const toggleFavorite = async () => {
     if (!user) {
@@ -56,94 +41,36 @@ export default function FavoriteButton({ vehicleId, className = '' }: FavoriteBu
       return
     }
 
-    // Kiểm tra vehicleId
     if (!vehicleId || typeof vehicleId !== 'string') {
-      console.error('Invalid vehicleId:', vehicleId)
       toast.error('ID xe không hợp lệ')
       return
     }
 
     setIsLoading(true)
     try {
-      const token = localStorage.getItem('token')
-      if (!token) {
-        throw new Error('No authentication token found')
-      }
-
-      console.log('Toggling favorite for vehicle:', vehicleId)
-      console.log('Current favorite state:', isFavorite)
-
       if (isFavorite) {
-        // Xóa khỏi danh sách yêu thích
-        console.log('Removing from favorites...')
-        const response = await axios.delete(endpoints.favorites.remove(vehicleId), {
-          headers: {
-            Authorization: `Bearer ${token}`,
-            'Content-Type': 'application/json'
-          }
-        })
-        
-        console.log('Remove response:', response.data)
+        await favoriteApi.remove(vehicleId)
         toast.success('Đã xóa khỏi danh sách yêu thích')
         setIsFavorite(false)
       } else {
-        // Thêm vào danh sách yêu thích
-        console.log('Adding to favorites...')
-        try {
-          const response = await axios.post(
-            endpoints.favorites.add(vehicleId),
-            {},
-            {
-              headers: {
-                Authorization: `Bearer ${token}`,
-                'Content-Type': 'application/json'
-              }
-            }
-          )
-          
-          console.log('Add response:', response.data)
-          toast.success('Đã thêm vào danh sách yêu thích')
-          setIsFavorite(true)
-        } catch (error) {
-          if (axios.isAxiosError(error) && error.response?.status === 400) {
-            const errorMessage = error.response.data.message
-            console.log('Error message from server:', errorMessage)
-            
-            if (errorMessage.includes('đã có trong danh sách yêu thích')) {
-              // Nếu xe đã có trong danh sách yêu thích, cập nhật UI
-              console.log('Vehicle already in favorites, updating UI...')
-              toast.success('Xe đã có trong danh sách yêu thích')
-              setIsFavorite(true)
-              return
-            }
-          }
-          throw error
-        }
+        await favoriteApi.add(vehicleId)
+        toast.success('Đã thêm vào danh sách yêu thích')
+        setIsFavorite(true)
       }
-    } catch (error) {
+    } catch (error: any) {
       console.error('Error toggling favorite:', error)
-      
-      if (axios.isAxiosError(error)) {
-        console.error('Error details:', {
-          status: error.response?.status,
-          data: error.response?.data,
-          headers: error.response?.headers,
-          config: error.config
-        })
+      const status = error.response?.status
+      const errorMessage = error.response?.data?.message || ''
 
-        if (error.response?.status === 401) {
-          // Token hết hạn hoặc không hợp lệ
-          const currentPath = window.location.pathname
-          toast.error('Phiên đăng nhập hết hạn, vui lòng đăng nhập lại')
-          router.push(`/login?redirect=${encodeURIComponent(currentPath)}`)
-        } else if (error.response?.status === 400) {
-          // Lỗi request không hợp lệ
-          console.error('Invalid request:', error.response.data)
-          toast.error(error.response.data.message || 'Yêu cầu không hợp lệ. Vui lòng thử lại sau.')
-        } else {
-          // Các lỗi khác
-          toast.error('Có lỗi xảy ra khi thực hiện thao tác. Vui lòng thử lại sau.')
-        }
+      if (status === 401) {
+        const currentPath = window.location.pathname
+        toast.error('Phiên đăng nhập hết hạn, vui lòng đăng nhập lại')
+        router.push(`/login?redirect=${encodeURIComponent(currentPath)}`)
+      } else if (status === 400 && errorMessage.includes('đã có')) {
+        toast.success('Xe đã có trong danh sách yêu thích')
+        setIsFavorite(true)
+      } else {
+        toast.error('Có lỗi xảy ra khi thực hiện thao tác. Vui lòng thử lại sau.')
       }
     } finally {
       setIsLoading(false)
@@ -172,4 +99,4 @@ export default function FavoriteButton({ vehicleId, className = '' }: FavoriteBu
       </svg>
     </button>
   )
-} 
+}

@@ -1,56 +1,56 @@
-const Review = require('../models/Review');
-const User = require('../models/User');
+const reviewRepository = require('../repositories/ReviewRepository');
+const vehicleRepository = require('../repositories/VehicleRepository');
+const userRepository = require('../repositories/UserRepository');
+const { BadRequestError, NotFoundError } = require('../utils/errors');
 
 class ReviewService {
   async createReview(reviewData) {
+    // Validate existence
+    const vehicle = await vehicleRepository.findById(reviewData.vehicle);
+    if (!vehicle) throw new NotFoundError('Không tìm thấy phương tiện');
+
+    const user = await userRepository.findById(reviewData.user);
+    if (!user) throw new NotFoundError('Không tìm thấy người bán');
+
+    // Prevent self-review
+    if (reviewData.user.toString() === reviewData.reviewer.toString()) {
+      throw new BadRequestError('Bạn không thể tự đánh giá chính mình');
+    }
+
     try {
-      const review = new Review(reviewData);
-      return await review.save();
+      return await reviewRepository.create(reviewData);
     } catch (error) {
+      // Bắt lỗi unique index: 1 reviewer chỉ đánh giá 1 user trên 1 vehicle 1 lần
+      if (error.code === 11000) {
+        throw new BadRequestError('Bạn đã đánh giá giao dịch này rồi');
+      }
       throw error;
     }
   }
 
   async getReviewsByUser(userId) {
-    try {
-      return await Review.find({ user: userId })
-        .populate('reviewer', 'full_name avatar_url')
-        .sort({ createdAt: -1 });
-    } catch (error) {
-      throw error;
-    }
+    return await reviewRepository.getReviewsByUser(userId);
   }
 
   async getUserRating(userId) {
-    try {
-      const reviews = await Review.find({ user: userId });
-      if (reviews.length === 0) return 0;
-      const totalRating = reviews.reduce((sum, review) => sum + review.rating, 0);
-      return totalRating / reviews.length;
-    } catch (error) {
-      throw error;
-    }
+    return await reviewRepository.getUserAverageRating(userId);
   }
 
   async updateReview(reviewId, updateData) {
-    try {
-      return await Review.findByIdAndUpdate(
-        reviewId,
-        updateData,
-        { new: true, runValidators: true }
-      );
-    } catch (error) {
-      throw error;
-    }
+    const review = await reviewRepository.updateById(
+      reviewId,
+      updateData,
+      { new: true, runValidators: true }
+    );
+    if (!review) throw new NotFoundError('Không tìm thấy đánh giá');
+    return review;
   }
 
   async deleteReview(reviewId) {
-    try {
-      return await Review.findByIdAndDelete(reviewId);
-    } catch (error) {
-      throw error;
-    }
+    const review = await reviewRepository.deleteById(reviewId);
+    if (!review) throw new NotFoundError('Không tìm thấy đánh giá');
+    return review;
   }
 }
 
-module.exports = new ReviewService(); 
+module.exports = new ReviewService();

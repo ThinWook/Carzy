@@ -2,8 +2,7 @@
 
 import { useEffect, useState } from 'react'
 import { useAuth } from '@/contexts/AuthContext'
-import { endpoints } from '@/config/api'
-import axios from 'axios'
+import { favoriteApi } from '@/services/favoriteApi'
 import Link from 'next/link'
 import Image from 'next/image'
 import toast from 'react-hot-toast'
@@ -26,22 +25,11 @@ export default function SavedListings() {
   useEffect(() => {
     const fetchFavoriteVehicles = async () => {
       try {
-        const token = localStorage.getItem('token')
-        if (!token) {
-          setLoading(false)
-          return
-        }
-
         // Lấy danh sách yêu thích từ API
-        const response = await axios.get(endpoints.favorites.list, {
-          headers: {
-            Authorization: `Bearer ${token}`,
-            'Content-Type': 'application/json'
-          }
-        })
+        const data = await favoriteApi.getList()
 
-        console.log('Favorite vehicles:', response.data)
-        setVehicles(response.data.favorites || [])
+        console.log('Favorite vehicles:', data)
+        setVehicles(data.favorites || [])
       } catch (error) {
         console.error('Error fetching favorite vehicles:', error)
         toast.error('Không thể tải danh sách xe yêu thích')

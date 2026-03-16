@@ -5,7 +5,7 @@ import { useRouter } from 'next/navigation'
 import { useAuth } from '@/contexts/AuthContext'
 import Link from 'next/link'
 import toast from 'react-hot-toast'
-import { endpoints } from '@/config/api'
+import { userApi } from '@/services/userApi'
 
 export default function EditProfile() {
   const { user, isAuthenticated, isLoading, refreshUserData } = useAuth()
@@ -246,7 +246,6 @@ export default function EditProfile() {
     if (!kycData.front_image && !kycData.back_image) return null
     
     try {
-      const token = localStorage.getItem('token')
       const formData = new FormData()
       
       if (kycData.front_image) {
@@ -257,20 +256,7 @@ export default function EditProfile() {
         formData.append('back', kycData.back_image)
       }
       
-      const response = await fetch(`${endpoints.kyc.uploadDocuments}`, {
-        method: 'POST',
-        headers: {
-          Authorization: `Bearer ${token}`,
-        },
-        body: formData,
-        credentials: 'same-origin'
-      })
-      
-      if (!response.ok) {
-        throw new Error('KYC document upload failed')
-      }
-      
-      const data = await response.json()
+      const data = await userApi.uploadKycDocuments(formData)
       return data.urls
     } catch (error) {
       console.error('Error uploading KYC documents:', error)
@@ -288,7 +274,6 @@ export default function EditProfile() {
       const documentUrls = await uploadKycDocuments()
       
       // Step 2: Update KYC information
-      const token = localStorage.getItem('token')
       const kycUpdateData = {
         identity_document_type: kycData.identity_document_type,
         identity_document_number: kycData.identity_document_number,
@@ -299,18 +284,7 @@ export default function EditProfile() {
         kyc_status: 'pending' // Set status to pending when submitting
       }
       
-      const response = await fetch(`${endpoints.kyc.update}`, {
-        method: 'PUT',
-        headers: {
-          'Content-Type': 'application/json',
-          Authorization: `Bearer ${token}`,
-        },
-        body: JSON.stringify(kycUpdateData),
-      })
-      
-      if (!response.ok) {
-        throw new Error('KYC update failed')
-      }
+      await userApi.updateKyc(kycUpdateData)
       
       toast.success('Thông tin KYC đã được gửi, vui lòng chờ xét duyệt')
       router.push('/profile')
@@ -330,45 +304,8 @@ export default function EditProfile() {
     formData.append('avatar', avatarFile)
     
     try {
-      console.log('Uploading avatar to:', endpoints.auth.uploadAvatar);
-      const token = localStorage.getItem('token')
-      
-      // Log the request for debugging
-      console.log('Avatar upload request:', {
-        url: endpoints.auth.uploadAvatar,
-        fileSize: avatarFile.size,
-        fileType: avatarFile.type,
-        fileName: avatarFile.name
-      });
-      
-      const response = await fetch(endpoints.auth.uploadAvatar, {
-        method: 'POST',
-        headers: {
-          Authorization: `Bearer ${token}`,
-          // Don't set Content-Type header, browser will set it with boundary for FormData
-        },
-        body: formData,
-        // Use 'same-origin' instead of 'include' for credentials
-        credentials: 'same-origin'
-      })
-      
-      // Log the response status for debugging
-      console.log('Upload response status:', response.status);
-      
-      if (!response.ok) {
-        // Try to get the error message from the response
-        let errorMessage = 'Avatar upload failed';
-        try {
-          const errorData = await response.json();
-          errorMessage = errorData.message || errorMessage;
-        } catch (parseError) {
-          console.error('Error parsing error response:', parseError);
-        }
-        
-        throw new Error(errorMessage);
-      }
-      
-      const data = await response.json()
+      console.log('Uploading avatar via userApi');
+      const data = await userApi.updateAvatar(formData)
       console.log('Upload successful, response:', data);
       return data.avatar_url
     } catch (error) {
@@ -386,44 +323,8 @@ export default function EditProfile() {
     formData.append('coverImage', coverImageFile)
     
     try {
-      console.log('Uploading cover image to:', endpoints.auth.uploadCoverImage);
-      const token = localStorage.getItem('token')
-      
-      // Log the request for debugging
-      console.log('Cover image upload request:', {
-        url: endpoints.auth.uploadCoverImage,
-        fileSize: coverImageFile.size,
-        fileType: coverImageFile.type,
-        fileName: coverImageFile.name
-      });
-      
-      const response = await fetch(endpoints.auth.uploadCoverImage, {
-        method: 'POST',
-        headers: {
-          Authorization: `Bearer ${token}`,
-          // Don't set Content-Type header, browser will set it with boundary for FormData
-        },
-        body: formData,
-        credentials: 'same-origin'
-      })
-      
-      // Log the response status for debugging
-      console.log('Cover image upload response status:', response.status);
-      
-      if (!response.ok) {
-        // Try to get the error message from the response
-        let errorMessage = 'Cover image upload failed';
-        try {
-          const errorData = await response.json();
-          errorMessage = errorData.message || errorMessage;
-        } catch (parseError) {
-          console.error('Error parsing error response:', parseError);
-        }
-        
-        throw new Error(errorMessage);
-      }
-      
-      const data = await response.json()
+      console.log('Uploading cover image via userApi');
+      const data = await userApi.updateCoverImage(formData)
       console.log('Cover image upload successful, response:', data);
       return data.cover_image_url
     } catch (error) {
@@ -436,8 +337,7 @@ export default function EditProfile() {
   // Update profile information
   const updateProfile = async (avatarUrl: string | null, coverImageUrl: string | null) => {
     try {
-      const token = localStorage.getItem('token')
-      const dataToUpdate = { ...formData }
+      const dataToUpdate: any = { ...formData }
       
       if (avatarUrl) {
         dataToUpdate.avatar = avatarUrl
@@ -447,20 +347,8 @@ export default function EditProfile() {
         dataToUpdate.coverImage = coverImageUrl
       }
       
-      const response = await fetch(endpoints.auth.updateProfile, {
-        method: 'PUT',
-        headers: {
-          'Content-Type': 'application/json',
-          Authorization: `Bearer ${token}`,
-        },
-        body: JSON.stringify(dataToUpdate),
-      })
-      
-      if (!response.ok) {
-        throw new Error('Profile update failed')
-      }
-      
-      return await response.json()
+      const data = await userApi.updateProfile(dataToUpdate)
+      return data
     } catch (error) {
       console.error('Error updating profile:', error)
       throw error

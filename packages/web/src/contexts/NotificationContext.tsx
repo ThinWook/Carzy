@@ -1,8 +1,7 @@
 'use client';
 
 import React, { createContext, useContext, useEffect, useState } from 'react';
-import axios from 'axios';
-import { endpoints } from '@/config/api';
+import { notificationApi } from '@/services/notificationApi';
 import { useAuth } from './AuthContext';
 import toast from 'react-hot-toast';
 
@@ -49,13 +48,9 @@ export const NotificationProvider: React.FC<{ children: React.ReactNode }> = ({ 
     
     setLoading(true);
     try {
-      const response = await axios.get(endpoints.notifications.list, {
-        headers: {
-          Authorization: `Bearer ${localStorage.getItem('token')}`
-        }
-      });
-      
-      setNotifications(response.data.data.notifications);
+      // Gọi qua notificationApi (tự động có cookie)
+      const data = await notificationApi.getList(1, 50);
+      setNotifications(data.data?.notifications || []);
     } catch (error) {
       console.error('Lỗi khi tải thông báo:', error);
       toast.error('Không thể tải thông báo');
@@ -68,13 +63,8 @@ export const NotificationProvider: React.FC<{ children: React.ReactNode }> = ({ 
     if (!isAuthenticated) return;
     
     try {
-      const response = await axios.get(endpoints.notifications.unreadCount, {
-        headers: {
-          Authorization: `Bearer ${localStorage.getItem('token')}`
-        }
-      });
-      
-      setUnreadCount(response.data.data.count);
+      const data = await notificationApi.getUnreadCount();
+      setUnreadCount(data.data?.count || 0);
     } catch (error) {
       console.error('Lỗi khi tải số lượng thông báo chưa đọc:', error);
     }
@@ -82,15 +72,7 @@ export const NotificationProvider: React.FC<{ children: React.ReactNode }> = ({ 
 
   const markAsRead = async (id: string) => {
     try {
-      await axios.patch(
-        endpoints.notifications.markAsRead(id),
-        {},
-        {
-          headers: {
-            Authorization: `Bearer ${localStorage.getItem('token')}`
-          }
-        }
-      );
+      await notificationApi.markAsRead(id);
       
       // Cập nhật state
       setNotifications(prevNotifications =>
@@ -111,15 +93,7 @@ export const NotificationProvider: React.FC<{ children: React.ReactNode }> = ({ 
 
   const markAllAsRead = async () => {
     try {
-      await axios.patch(
-        endpoints.notifications.markAllAsRead,
-        {},
-        {
-          headers: {
-            Authorization: `Bearer ${localStorage.getItem('token')}`
-          }
-        }
-      );
+      await notificationApi.markAllAsRead();
       
       // Cập nhật state
       setNotifications(prevNotifications =>

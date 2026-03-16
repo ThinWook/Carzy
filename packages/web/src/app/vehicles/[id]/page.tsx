@@ -6,7 +6,8 @@ import Image from 'next/image'
 import toast from 'react-hot-toast'
 import axios from 'axios'
 import { useQuery } from '@tanstack/react-query'
-import { endpoints } from '@/config/api'
+import { vehicleApi } from '@/services/vehicleApi'
+import { chatApi } from '@/services/chatApi'
 import Link from 'next/link'
 import { useAuth } from '@/contexts/AuthContext'
 import FavoriteButton from '@/components/FavoriteButton'
@@ -214,26 +215,17 @@ function VehicleInfo({ vehicle }: { vehicle: Vehicle }) {
               console.log('Sending chat request with data:', { vehicleId, sellerId });
               
               // Tạo cuộc trò chuyện mới hoặc mở cuộc trò chuyện hiện có
-              const response = await axios.post(
-                endpoints.chat.create, 
-                { 
-                  vehicleId, 
-                  sellerId 
-                },
-                {
-                  headers: {
-                    'Content-Type': 'application/json',
-                    Authorization: `Bearer ${token}`
-                  }
-                }
-              )
+              const responseData = await chatApi.create({
+                vehicleId,
+                participantId: sellerId // chatApi.create expects participantId instead of sellerId
+              })
               
               // Kiểm tra response trước khi chuyển hướng
-              console.log('Chat creation response:', response.data);
+              console.log('Chat creation response:', responseData);
               
               // Chuyển hướng đến trang chat với ID chat vừa tạo
-              if (response.data && response.data._id) {
-                window.location.href = `/chat/${response.data._id}`;
+              if (responseData && responseData._id) {
+                window.location.href = `/chat/${responseData._id}`;
               } else {
                 throw new Error('Không nhận được ID chat hợp lệ từ server');
               }
@@ -265,8 +257,7 @@ export default function VehicleDetail() {
     queryKey: ['vehicle', id],
     queryFn: async () => {
       try {
-        const response = await axios.get(endpoints.vehicles.detail(id as string))
-        const data = response.data
+        const data = await vehicleApi.getById(id as string)
         
         // Đặt ảnh đầu tiên là ảnh được chọn
         if (data.images && data.images.length > 0) {

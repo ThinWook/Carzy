@@ -4,7 +4,7 @@ import { useState, useEffect } from 'react'
 import Link from 'next/link'
 import Image from 'next/image'
 import { useParams } from 'next/navigation'
-import { endpoints } from '@/config/api'
+import { vehicleApi } from '@/services/vehicleApi'
 import { Vehicle } from '@/types'
 import FavoriteButton from '@/components/FavoriteButton'
 
@@ -139,11 +139,7 @@ export default function VehicleTypeList() {
     const fetchVehicles = async () => {
       try {
         setIsLoading(true);
-        const response = await fetch(endpoints.vehicles.getByType(type as string));
-        if (!response.ok) {
-          throw new Error('Failed to fetch vehicles');
-        }
-        const data = await response.json();
+        const data = await vehicleApi.getByType(type as string);
         setVehicles(data);
 
         // Extract filter options from data

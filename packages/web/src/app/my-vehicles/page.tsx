@@ -5,8 +5,7 @@ import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 import toast from 'react-hot-toast'
 import { useAuth } from '@/contexts/AuthContext'
-import { endpoints } from '@/config/api'
-import axios from 'axios'
+import { vehicleApi } from '@/services/vehicleApi'
 
 type Vehicle = {
   _id: string
@@ -93,18 +92,7 @@ export default function MyVehicles() {
     const fetchUserVehicles = async () => {
       try {
         setIsLoading(true)
-        const token = localStorage.getItem('token')
-        const response = await fetch(endpoints.vehicles.userVehicles, {
-          headers: {
-            Authorization: `Bearer ${token}`,
-          },
-        })
-
-        if (!response.ok) {
-          throw new Error('Không thể lấy danh sách xe')
-        }
-
-        const data = await response.json()
+        const data = await vehicleApi.getUserVehicles();
         setVehicles(data)
       } catch (error) {
         console.error('Error fetching user vehicles:', error)
@@ -123,15 +111,7 @@ export default function MyVehicles() {
   const handleDeleteVehicle = async (id: string) => {
     if (window.confirm('Bạn có chắc chắn muốn xóa xe này không?')) {
       try {
-        const token = localStorage.getItem('token')
-        
-        // Sử dụng axios thay vì fetch để thực hiện yêu cầu DELETE
-        await axios.delete(`${endpoints.API_URL}/vehicles/${id}`, {
-          headers: {
-            'Authorization': `Bearer ${token}`,
-            'Content-Type': 'application/json'
-          }
-        });
+        await vehicleApi.delete(id);
 
         // Remove the deleted vehicle from state
         setVehicles(vehicles.filter(v => v._id !== id))

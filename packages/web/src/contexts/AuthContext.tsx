@@ -16,7 +16,13 @@ export interface User {
   avatar_url?: string
   cover_image_url?: string
   rating: number
-  kyc_status: 'pending' | 'verified' | 'rejected'
+  kyc_status: 'pending' | 'verified' | 'rejected' | 'unverified'
+  identity_document_type?: 'cmnd' | 'cccd' | 'passport'
+  identity_document_number?: string
+  identity_document_images?: { front?: string; back?: string }
+  bank_account_name?: string
+  bank_account_number?: string
+  bank_name?: string
   created_at: string
   updated_at: string
 }

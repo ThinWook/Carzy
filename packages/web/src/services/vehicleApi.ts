@@ -70,9 +70,7 @@ export const vehicleApi = {
    * Upload danh sách hình ảnh
    */
   uploadImages: async (formData: FormData) => {
-    const { data } = await apiClient.post(endpoints.vehicles.upload, formData, {
-      headers: { 'Content-Type': 'multipart/form-data' },
-    })
+    const { data } = await apiClient.post(endpoints.vehicles.upload, formData)
     return data
   },
 }

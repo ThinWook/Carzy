@@ -4,7 +4,7 @@ import { useState, useEffect } from 'react'
 import Link from 'next/link'
 import { endpoints } from '@/config/api'
 import VehicleCard from '@/components/VehicleCard'
-import axios from 'axios'
+import { vehicleApi } from '@/services/vehicleApi'
 
 // Định nghĩa kiểu dữ liệu theo cấu trúc mới từ API
 interface Vehicle {
@@ -32,6 +32,9 @@ interface Vehicle {
   updatedAt?: string;
   createdAt?: string;
   status?: string;
+  condition?: string;
+  isNew?: boolean;
+  updated_at?: string;
 }
 
 // Tạo mapping cho loại xe sang tiếng Việt
@@ -167,14 +170,9 @@ export default function VehicleList() {
     const fetchVehicles = async () => {
       try {
         // In ra endpoint để debug
-        console.log('Fetching from:', endpoints.vehicles.list);
+        console.log('Fetching using vehicleApi.getAll()');
         
-        const response = await axios.get('/api/vehicles')
-        if (!response.ok) {
-          throw new Error(`Failed to fetch vehicles: ${response.status} ${response.statusText}`)
-        }
-        
-        const data = await response.json()
+        const data = await vehicleApi.getAll();
         // Lưu raw data để debug
         setRawData(data);
         
@@ -188,7 +186,7 @@ export default function VehicleList() {
           setError(null);
           
           // Extract filter options from data
-          const brands = [...new Set(vehiclesData.map((vehicle: Vehicle) => vehicle.title))];
+          const brands = Array.from(new Set(vehiclesData.map((vehicle: Vehicle) => vehicle.title))) as string[];
           const prices = vehiclesData.map((vehicle: Vehicle) => vehicle.price);
           const years = vehiclesData.map((vehicle: Vehicle) => vehicle.year);
           
@@ -367,7 +365,7 @@ export default function VehicleList() {
             </div>
           ) : (
             filteredVehicles.map((vehicle) => (
-              <VehicleCard key={vehicle._id || `vehicle-${vehicle.title}-${Math.random()}`} vehicle={vehicle} />
+              <VehicleCard key={vehicle._id || `vehicle-${vehicle.title}-${Math.random()}`} vehicle={vehicle as any} />
             ))
           )}
         </div>
