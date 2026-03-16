@@ -1,669 +1,160 @@
 const userService = require('../services/userService');
-const User = require('../models/User');
-const Vehicle = require('../models/Vehicle');
-const Favorite = require('../models/Favorite');
-const jwt = require('jsonwebtoken');
-const bcrypt = require('bcryptjs');
-const logger = require('../utils/logger');
 
+/**
+ * UserController — thin HTTP interface for user-related endpoints.
+ * All business logic lives in userService.
+ */
 const userController = {
-  // Register new user
-  registerUser: async (req, res) => {
+  // Keep for backward compat — auth/register and auth/login now go through authController
+  registerUser: async (req, res, next) => {
     try {
-      const {
-        full_name,
-        email,
-        phone_number,
-        address,
-        password,
-        role = "user", // Default to user if not specified
-      } = req.body;
-
-      // Basic validation: email and password required
-      if (!email || !password) {
-        return res
-          .status(400)
-          .json({ message: "Email and password are required" });
-      }
-
-      // Always force role to 'user' for registrations
-      const userRole = "user";
-
-      // Check if user exists
-      const existingUser = await User.findOne({ email });
-      if (existingUser) {
-        return res.status(409).json({ message: "email already registered" });
-      }
-
-      // Create new user (model is responsible for hashing in pre-save)
-      const user = await User.create({
-        full_name,
-        email,
-        phone_number,
-        address,
-        password_hash: password,
-        role: userRole,
-      });
-
-      // Generate JWT token
-      const token = jwt.sign({ id: user._id }, process.env.JWT_SECRET, {
-        expiresIn: "30d",
-      });
-
-      // Return new user (excluding password/hash)
+      const authService = require('../services/authService');
+      const { user, token } = await authService.register(req.body);
       res.status(201).json({
-        _id: user._id,
-        full_name: user.full_name,
-        email: user.email,
-        phone_number: user.phone_number,
-        address: user.address,
-        role: user.role,
-        avatar_url: user.avatar_url,
-        cover_image_url: user.cover_image_url,
-        rating: user.rating,
-        created_at: user.created_at,
+        _id: user._id, full_name: user.full_name, email: user.email,
+        phone_number: user.phone_number, address: user.address, role: user.role,
+        avatar_url: user.avatar_url, cover_image_url: user.cover_image_url,
+        rating: user.rating, created_at: user.created_at, token,
       });
-    } catch (error) {
-      // Handle duplicate key (race condition) as conflict
-      if (error && (error.code === 11000 || error.keyPattern)) {
-        return res.status(409).json({ message: "email already registered" });
-      }
-
-      // Unknown / DB errors
-      res.status(500).json({ message: error.message });
-    }
+    } catch (error) { next(error); }
   },
 
-  // Login user
-  loginUser: async (req, res) => {
+  loginUser: async (req, res, next) => {
     try {
-      const { email, password } = req.body;
-
-      // Find the user by email
-      const user = await User.findOne({ email });
-      if (!user) {
-        return res.status(401).json({ message: 'Email hoặc mật khẩu không đúng' });
-      }
-
-      // Check if user is locked
-      if (user.is_locked) {
-        return res.status(401).json({ message: 'Tài khoản đã bị khóa, vui lòng liên hệ quản trị viên' });
-      }
-
-      // Check password
-      const isMatch = await user.matchPassword(password);
-      if (!isMatch) {
-        return res.status(401).json({ message: 'Email hoặc mật khẩu không đúng' });
-      }
-
-      // Generate JWT token
-      const token = jwt.sign({ id: user._id }, process.env.JWT_SECRET, {
-        expiresIn: '30d'
-      });
-
-      // Return user (excluding password)
+      const authService = require('../services/authService');
+      const { user, token } = await authService.login(req.body.email, req.body.password);
       res.json({
-        _id: user._id,
-        full_name: user.full_name,
-        email: user.email,
-        phone_number: user.phone_number,
-        address: user.address,
-        role: user.role,
-        avatar_url: user.avatar_url,
-        cover_image_url: user.cover_image_url,
-        rating: user.rating,
-        created_at: user.created_at,
-        token
+        _id: user._id, full_name: user.full_name, email: user.email,
+        phone_number: user.phone_number, address: user.address, role: user.role,
+        avatar_url: user.avatar_url, cover_image_url: user.cover_image_url,
+        rating: user.rating, created_at: user.created_at, token,
       });
-    } catch (error) {
-      res.status(400).json({ message: error.message });
-    }
+    } catch (error) { next(error); }
   },
 
-  // Login admin
-  loginAdmin: async (req, res) => {
+  loginAdmin: async (req, res, next) => {
     try {
-      const { email, password } = req.body;
-
-      // Find the user by email
-      const user = await User.findOne({ email });
-      if (!user) {
-        return res.status(401).json({ message: 'Email hoặc mật khẩu không đúng' });
-      }
-
-      // Check if user is admin
-      if (user.role !== 'admin') {
-        return res.status(401).json({ message: 'Bạn không có quyền truy cập trang quản trị' });
-      }
-
-      // Check if admin account is locked
-      if (user.is_locked) {
-        return res.status(401).json({ message: 'Tài khoản đã bị khóa, vui lòng liên hệ super admin' });
-      }
-
-      // Check password
-      const isMatch = await user.matchPassword(password);
-      if (!isMatch) {
-        return res.status(401).json({ message: 'Email hoặc mật khẩu không đúng' });
-      }
-
-      // Generate JWT token with short expiration for admin (8 hours)
-      const token = jwt.sign({ id: user._id }, process.env.JWT_SECRET, {
-        expiresIn: '8h'
-      });
-
-      // Generate refresh token with longer expiration (30 days)
-      const refreshToken = jwt.sign({ id: user._id }, process.env.JWT_REFRESH_SECRET, {
-        expiresIn: '30d'
-      });
-
-      // Return user with admin info and tokens
+      const authService = require('../services/authService');
+      const { user, token, refreshToken } = await authService.loginAdmin(req.body.email, req.body.password);
       res.json({
-        _id: user._id,
-        full_name: user.full_name,
-        email: user.email,
-        phone_number: user.phone_number,
-        address: user.address,
-        role: user.role,
-        avatar_url: user.avatar_url,
-        token,
-        refreshToken
+        _id: user._id, full_name: user.full_name, email: user.email,
+        phone_number: user.phone_number, address: user.address, role: user.role,
+        avatar_url: user.avatar_url, token, refreshToken,
       });
-    } catch (error) {
-      res.status(400).json({ message: error.message });
-    }
+    } catch (error) { next(error); }
   },
 
-  // Refresh admin token
-  refreshAdminToken: async (req, res) => {
+  refreshAdminToken: async (req, res, next) => {
     try {
-      const { refreshToken } = req.body;
+      const authService = require('../services/authService');
+      const result = await authService.refreshAdminToken(req.body.refreshToken);
+      res.json(result);
+    } catch (error) { next(error); }
+  },
 
-      if (!refreshToken) {
-        return res.status(400).json({ message: 'Refresh token is required' });
-      }
+  getUserProfile: async (req, res, next) => {
+    try {
+      const profile = await userService.getProfile(req.user._id);
+      res.json(profile);
+    } catch (error) { next(error); }
+  },
 
-      // Verify refresh token
-      const decoded = jwt.verify(refreshToken, process.env.JWT_REFRESH_SECRET);
-      
-      // Find user
-      const user = await User.findById(decoded.id);
-      if (!user) {
-        return res.status(404).json({ message: 'User not found' });
-      }
-
-      // Check if user is admin
-      if (user.role !== 'admin') {
-        return res.status(401).json({ message: 'Not authorized as admin' });
-      }
-
-      // Generate new JWT token
-      const newToken = jwt.sign({ id: user._id }, process.env.JWT_SECRET, {
-        expiresIn: '8h'
-      });
-
-      // Return new token
+  updateUserProfile: async (req, res, next) => {
+    try {
+      const updated = await userService.updateProfile(req.user._id, req.body);
       res.json({
-        token: newToken
+        _id: updated._id, full_name: updated.full_name, email: updated.email,
+        phone_number: updated.phone_number, address: updated.address, role: updated.role,
+        avatar_url: updated.avatar_url, cover_image_url: updated.cover_image_url,
+        rating: updated.rating, kyc_status: updated.kyc_status,
+        created_at: updated.created_at, updated_at: updated.updated_at,
       });
-    } catch (error) {
-      res.status(401).json({ message: 'Invalid refresh token' });
-    }
+    } catch (error) { next(error); }
   },
 
-  // Get user profile (current user)
-  getUserProfile: async (req, res) => {
+  deleteUser: async (req, res, next) => {
     try {
-      const user = await User.findById(req.user._id).select('-password_hash');
-      
-      if (!user) {
-        return res.status(404).json({ message: 'Không tìm thấy người dùng' });
-      }
-      
-      const vehicleCount = await Vehicle.countDocuments({ 
-        user: user._id,
-        status: 'approved'
-      });
-      
-      const favoriteCount = await Favorite.countDocuments({
-        user: user._id
-      });
-      
-      const userResponse = {
-        ...user.toObject(),
-        vehicle_count: vehicleCount,
-        favorite_count: favoriteCount
-      };
-      
-      res.json(userResponse);
-    } catch (error) {
-      logger.error('Error in getUserProfile', { error: error.message });
-      res.status(500).json({ message: 'Lỗi server' });
-    }
+      await userService.deleteAccount(req.user._id);
+      res.json({ message: 'Account deleted successfully' });
+    } catch (error) { next(error); }
   },
 
-  // Update user profile
-  updateUserProfile: async (req, res) => {
+  updateUserAvatar: async (req, res, next) => {
     try {
-      const user = await User.findById(req.user._id);
-      if (!user) {
-        return res.status(404).json({ message: 'User not found' });
-      }
-
-      // Update fields if provided
-      user.full_name = req.body.full_name || user.full_name;
-      user.email = req.body.email || user.email;
-      user.phone_number = req.body.phone_number || user.phone_number;
-      user.address = req.body.address || user.address;
-      
-      // Update password if provided
-      if (req.body.password) {
-        user.password_hash = req.body.password;
-      }
-
-      const updatedUser = await user.save();
-
-      res.json({
-        _id: updatedUser._id,
-        full_name: updatedUser.full_name,
-        email: updatedUser.email,
-        phone_number: updatedUser.phone_number,
-        address: updatedUser.address,
-        role: updatedUser.role,
-        avatar_url: updatedUser.avatar_url,
-        cover_image_url: updatedUser.cover_image_url,
-        rating: updatedUser.rating,
-        kyc_status: updatedUser.kyc_status,
-        created_at: updatedUser.created_at,
-        updated_at: updatedUser.updated_at
-      });
-    } catch (error) {
-      res.status(400).json({ message: error.message });
-    }
+      if (!req.file) return res.status(400).json({ message: 'Please upload a file' });
+      const avatar_url = await userService.updateAvatar(req.user._id, req.file.path);
+      res.json({ avatar_url, message: 'Avatar updated successfully' });
+    } catch (error) { next(error); }
   },
 
-  // Update user avatar
-  updateUserAvatar: async (req, res) => {
+  updateUserCoverImage: async (req, res, next) => {
     try {
-      if (!req.file) {
-        return res.status(400).json({ message: 'Please upload a file' });
-      }
-
-      const user = await User.findById(req.user._id);
-      if (!user) {
-        return res.status(404).json({ message: 'User not found' });
-      }
-
-      user.avatar_url = req.file.path;
-      await user.save();
-
-      logger.info('Avatar updated', { userId: user._id });
-      res.json({ 
-        avatar_url: user.avatar_url,
-        message: 'Avatar updated successfully' 
-      });
-    } catch (error) {
-      logger.error('Avatar upload error', { error: error.message });
-      res.status(500).json({ message: error.message });
-    }
+      if (!req.file) return res.status(400).json({ message: 'Please upload a file' });
+      const cover_image_url = await userService.updateCoverImage(req.user._id, req.file.path);
+      res.json({ cover_image_url, message: 'Cover image updated successfully' });
+    } catch (error) { next(error); }
   },
 
-  // Update user cover image
-  updateUserCoverImage: async (req, res) => {
-    try {
-      if (!req.file) {
-        return res.status(400).json({ message: 'Please upload a file' });
-      }
-
-      const user = await User.findById(req.user._id);
-      if (!user) {
-        return res.status(404).json({ message: 'User not found' });
-      }
-
-      user.cover_image_url = req.file.path;
-      await user.save();
-
-      logger.info('Cover image updated', { userId: user._id });
-      res.json({ 
-        cover_image_url: user.cover_image_url,
-        message: 'Cover image updated successfully' 
-      });
-    } catch (error) {
-      logger.error('Cover image upload error', { error: error.message });
-      res.status(500).json({ message: error.message });
-    }
-  },
-
-  // Delete user
-  deleteUser: async (req, res) => {
-    try {
-      await userService.deleteUser(req.user._id);
-      res.json({ message: 'User removed' });
-    } catch (error) {
-      res.status(500).json({ message: error.message });
-    }
-  },
-
-  // Upload KYC documents
-  uploadKycDocuments: async (req, res) => {
+  uploadKycDocuments: async (req, res, next) => {
     try {
       if (!req.files || (!req.files.front && !req.files.back)) {
         return res.status(400).json({ message: 'Please upload document images' });
       }
-
-      const user = await User.findById(req.user._id);
-      if (!user) {
-        return res.status(404).json({ message: 'User not found' });
-      }
-
-      // Initialize identity_document_images if it doesn't exist
-      if (!user.identity_document_images) {
-        user.identity_document_images = {};
-      }
-
-      // Update document image fields
-      if (req.files.front) {
-        user.identity_document_images.front = req.files.front[0].path;
-      }
-      
-      if (req.files.back) {
-        user.identity_document_images.back = req.files.back[0].path;
-      }
-      
-      await user.save();
-
-      logger.info('KYC documents uploaded', { userId: user._id });
-      res.json({ 
-        urls: {
-          front: user.identity_document_images.front,
-          back: user.identity_document_images.back
-        },
-        message: 'KYC documents uploaded successfully' 
-      });
-    } catch (error) {
-      logger.error('KYC upload error', { error: error.message });
-      res.status(500).json({ message: error.message });
-    }
+      const urls = await userService.uploadKycDocuments(req.user._id, req.files);
+      res.json({ urls, message: 'KYC documents uploaded successfully' });
+    } catch (error) { next(error); }
   },
 
-  // Update KYC information
-  updateKyc: async (req, res) => {
+  updateKyc: async (req, res, next) => {
     try {
-      const user = await User.findById(req.user._id);
-      if (!user) {
-        return res.status(404).json({ message: 'User not found' });
-      }
-
-      // Update KYC fields if provided
-      if (req.body.identity_document_type) {
-        user.identity_document_type = req.body.identity_document_type;
-      }
-      
-      if (req.body.identity_document_number) {
-        user.identity_document_number = req.body.identity_document_number;
-      }
-      
-      if (req.body.identity_document_images) {
-        // Initialize if it doesn't exist
-        if (!user.identity_document_images) {
-          user.identity_document_images = {};
-        }
-        
-        // Update only the provided fields
-        if (req.body.identity_document_images.front) {
-          user.identity_document_images.front = req.body.identity_document_images.front;
-        }
-        
-        if (req.body.identity_document_images.back) {
-          user.identity_document_images.back = req.body.identity_document_images.back;
-        }
-      }
-      
-      // Update bank account information
-      if (req.body.bank_account_name) {
-        user.bank_account_name = req.body.bank_account_name;
-      }
-      
-      if (req.body.bank_account_number) {
-        user.bank_account_number = req.body.bank_account_number;
-      }
-      
-      if (req.body.bank_name) {
-        user.bank_name = req.body.bank_name;
-      }
-      
-      // Update KYC status
-      if (req.body.kyc_status) {
-        user.kyc_status = req.body.kyc_status;
-      }
-
-      const updatedUser = await user.save();
-
+      const updated = await userService.updateKyc(req.user._id, req.body);
       res.json({
-        _id: updatedUser._id,
-        identity_document_type: updatedUser.identity_document_type,
-        identity_document_number: updatedUser.identity_document_number,
-        identity_document_images: updatedUser.identity_document_images,
-        bank_account_name: updatedUser.bank_account_name,
-        bank_account_number: updatedUser.bank_account_number,
-        bank_name: updatedUser.bank_name,
-        kyc_status: updatedUser.kyc_status,
-        message: 'KYC information updated successfully'
+        _id: updated._id,
+        identity_document_type: updated.identity_document_type,
+        identity_document_number: updated.identity_document_number,
+        identity_document_images: updated.identity_document_images,
+        bank_account_name: updated.bank_account_name,
+        bank_account_number: updated.bank_account_number,
+        bank_name: updated.bank_name,
+        kyc_status: updated.kyc_status,
+        message: 'KYC information updated successfully',
       });
-    } catch (error) {
-      res.status(400).json({ message: error.message });
-    }
+    } catch (error) { next(error); }
   },
 
-  // Get all users (admin only) with filtering and pagination
-  getUsers: async (req, res) => {
+  getUsers: async (req, res, next) => {
     try {
-      // Lấy các tham số từ query string
-      const { 
-        search = '', 
-        role = '', 
-        is_locked, 
-        kyc_status = '',
-        page = 1, 
-        limit = 10,
-        exclude_admin = 'true'
-      } = req.query;
+      const result = await userService.getUsers(req.query, req.user);
+      res.json(result);
+    } catch (error) { next(error); }
+  },
 
-      // Kiểm tra quyền admin
-      if (req.user.role !== 'admin') {
-        return res.status(403).json({ message: 'Không có quyền truy cập' });
-      }
-
-      // Xây dựng query filter
-      const filter = {};
-      
-      // Lọc theo vai trò nếu được chỉ định
-      if (role && role !== 'all') {
-        filter.role = role;
-      } else if (exclude_admin === 'true') {
-        // Nếu không chọn role cụ thể và exclude_admin là true, loại trừ vai trò admin
-        filter.role = { $ne: 'admin' };
-      }
-
-      // Lọc theo trạng thái KYC nếu được chỉ định
-      if (kyc_status && kyc_status !== 'all') {
-        filter.kyc_status = kyc_status;
-      }
-
-      // Lọc theo trạng thái khóa tài khoản
-      if (is_locked !== undefined) {
-        // Chuyển đổi từ string sang boolean
-        filter.is_locked = is_locked === 'true';
-      }
-
-      // Tìm kiếm theo tên, email hoặc số điện thoại
-      if (search) {
-        filter.$or = [
-          { full_name: { $regex: search, $options: 'i' } },
-          { email: { $regex: search, $options: 'i' } },
-          { phone_number: { $regex: search, $options: 'i' } }
-        ];
-      }
-
-      // Chuyển đổi page và limit thành số
-      const pageNum = parseInt(page);
-      const limitNum = parseInt(limit);
-      
-      // Tính toán số bản ghi bỏ qua
-      const skip = (pageNum - 1) * limitNum;
-
-      // Đếm tổng số người dùng phù hợp với filter
-      const total = await User.countDocuments(filter);
-
-      // Lấy danh sách người dùng
-      const users = await User.find(filter)
-        .sort({ created_at: -1 }) // Sắp xếp mới nhất trước
-        .skip(skip)
-        .limit(limitNum)
-        .select('-password_hash'); // Loại bỏ trường password_hash
-
-      // Tính toán thông tin phân trang
-      const totalPages = Math.ceil(total / limitNum);
-      const hasMore = pageNum < totalPages;
-
+  toggleUserLock: async (req, res, next) => {
+    try {
+      const user = await userService.toggleUserLock(req.body.userId, req.body.isLocked, req.user);
       res.json({
-        users,
-        pagination: {
-          total,
-          page: pageNum,
-          limit: limitNum,
-          totalPages,
-          hasMore
-        }
+        message: req.body.isLocked ? 'Tài khoản đã bị khóa' : 'Tài khoản đã được mở khóa',
+        user: { _id: user._id, full_name: user.full_name, email: user.email, role: user.role, is_locked: user.is_locked, kyc_status: user.kyc_status },
       });
-    } catch (error) {
-      logger.error('Error in getUsers', { error: error.message });
-      res.status(500).json({ message: 'Lỗi server' });
-    }
+    } catch (error) { next(error); }
   },
 
-  // Lock/unlock user (admin only)
-  toggleUserLock: async (req, res) => {
+  updateKycStatus: async (req, res, next) => {
     try {
-      const { userId, isLocked } = req.body;
-
-      // Kiểm tra quyền admin
-      if (req.user.role !== 'admin') {
-        return res.status(403).json({ message: 'Không có quyền truy cập' });
-      }
-
-      // Tìm và cập nhật người dùng
-      const user = await User.findById(userId);
-      
-      if (!user) {
-        return res.status(404).json({ message: 'Không tìm thấy người dùng' });
-      }
-
-      // Ngăn chặn admin khóa tài khoản admin khác
-      if (user.role === 'admin' && req.user._id.toString() !== userId) {
-        return res.status(403).json({ message: 'Không thể khóa tài khoản admin khác' });
-      }
-
-      // Cập nhật trạng thái khóa
-      user.is_locked = isLocked;
-      await user.save();
-
-      res.json({ 
-        message: isLocked ? 'Tài khoản đã bị khóa' : 'Tài khoản đã được mở khóa',
-        user: {
-          _id: user._id,
-          full_name: user.full_name,
-          email: user.email,
-          role: user.role,
-          is_locked: user.is_locked,
-          kyc_status: user.kyc_status
-        }
+      const user = await userService.updateKycStatus(req.body.userId, req.body.kycStatus, req.user);
+      res.json({
+        message: `Trạng thái KYC đã được cập nhật thành ${req.body.kycStatus}`,
+        user: { _id: user._id, full_name: user.full_name, email: user.email, role: user.role, kyc_status: user.kyc_status },
       });
-    } catch (error) {
-      logger.error('Error in toggleUserLock', { error: error.message });
-      res.status(500).json({ message: 'Lỗi server' });
-    }
+    } catch (error) { next(error); }
   },
 
-  // Update KYC status (admin only)
-  updateKycStatus: async (req, res) => {
+  getUserById: async (req, res, next) => {
     try {
-      const { userId, kycStatus } = req.body;
-
-      // Kiểm tra quyền admin
-      if (req.user.role !== 'admin') {
-        return res.status(403).json({ message: 'Không có quyền truy cập' });
-      }
-
-      // Kiểm tra trạng thái KYC hợp lệ
-      if (!['pending', 'verified', 'rejected'].includes(kycStatus)) {
-        return res.status(400).json({ message: 'Trạng thái KYC không hợp lệ' });
-      }
-
-      // Tìm và cập nhật người dùng
-      const user = await User.findById(userId);
-      
-      if (!user) {
-        return res.status(404).json({ message: 'Không tìm thấy người dùng' });
-      }
-
-      // Cập nhật trạng thái KYC
-      user.kyc_status = kycStatus;
-      await user.save();
-
-      res.json({ 
-        message: `Trạng thái KYC đã được cập nhật thành ${kycStatus}`,
-        user: {
-          _id: user._id,
-          full_name: user.full_name,
-          email: user.email,
-          role: user.role,
-          kyc_status: user.kyc_status
-        }
-      });
-    } catch (error) {
-      logger.error('Error in updateKycStatus', { error: error.message });
-      res.status(500).json({ message: 'Lỗi server' });
-    }
+      const user = await userService.getUserById(req.params.id, req.user);
+      res.json({ user });
+    } catch (error) { next(error); }
   },
-
-  // Lấy chi tiết người dùng theo ID (admin only)
-  getUserById: async (req, res) => {
-    try {
-      const userId = req.params.id;
-
-      // Kiểm tra quyền admin
-      if (req.user.role !== 'admin') {
-        return res.status(403).json({ message: 'Không có quyền truy cập' });
-      }
-
-      // Tìm người dùng
-      const user = await User.findById(userId).select('-password_hash');
-      
-      if (!user) {
-        return res.status(404).json({ message: 'Không tìm thấy người dùng' });
-      }
-
-      // Định dạng lại URL cho avatar và cover image nếu cần
-      // Đảm bảo đường dẫn đầy đủ cho các hình ảnh
-      if (user.avatar_url && !user.avatar_url.startsWith('http')) {
-        const apiBaseUrl = process.env.API_URL || 'http://localhost:5000';
-        user.avatar_url = `${apiBaseUrl}${user.avatar_url.startsWith('/') ? '' : '/'}${user.avatar_url}`;
-      }
-      
-      if (user.cover_image_url && !user.cover_image_url.startsWith('http')) {
-        const apiBaseUrl = process.env.API_URL || 'http://localhost:5000';
-        user.cover_image_url = `${apiBaseUrl}${user.cover_image_url.startsWith('/') ? '' : '/'}${user.cover_image_url}`;
-      }
-
-      res.json({ 
-        user
-      });
-    } catch (error) {
-      logger.error('Error in getUserById', { error: error.message });
-      res.status(500).json({ message: 'Lỗi server' });
-    }
-  }
 };
 
-module.exports = userController; 
+module.exports = userController;

@@ -1,0 +1,273 @@
+# Implementation Plan — Refactor Giai Đoạn 2
+
+## Mục Tiêu
+Tái cấu trúc kiến trúc — **không thay đổi tính năng**, chỉ tổ chức lại code đúng tầng (layer):
+`Controller (HTTP only)` → `Service (Business Logic)` → `Repository (DB)`.
+
+## Phạm Vi Thay Đổi
+
+---
+
+### A. BACKEND — Repository Pattern + Thin Controller
+
+#### [NEW] [BaseRepository.js](file:///d:/Carzy/packages/api/src/repositories/base/BaseRepository.js)
+Class cha trừu tượng: `findById`, `findOne`, `find`, [create](file:///d:/Carzy/packages/api/src/services/userService.js#5-13), `updateById`, `deleteById`, `paginate`.
+
+#### [NEW] [VehicleRepository.js](file:///d:/Carzy/packages/api/src/repositories/VehicleRepository.js)
+Kế thừa BaseRepository. Chứa mọi Mongoose query liên quan Vehicle:
+- `findAllWithPagination(filters, pagination)` — thay cho query trong getAllVehicles
+- `findByIdWithUser(id)` — thay cho Vehicle.findById().populate()
+- `findByUser(userId)` — thay cho Vehicle.find({user})
+- `findForAdmin(filters, pagination)` — thay cho getVehiclesForAdmin query
+- `quickSearch(query)` — full-text search
+
+#### [NEW] [UserRepository.js](file:///d:/Carzy/packages/api/src/repositories/UserRepository.js)
+Kế thừa BaseRepository. Chứa mọi Mongoose query liên quan User:
+- `findByEmail(email)`
+- `findWithStats(userId)` — user + vehicleCount + favoriteCount
+
+---
+
+#### [MODIFY/REPLACE] [vehicleService.js](file:///d:/Carzy/packages/api/src/services/vehicleService.js)
+Viết lại hoàn toàn — service gọi VehicleRepository, chứa business logic:
+- [getAll(filters, pagination)](file:///d:/Carzy/packages/api/src/services/vehicleService.js#13-22) — gọi repo, không biết gì về Mongoose
+- `getById(id)` — ném NotFoundError nếu không tìm thấy
+- [create(vehicleData, userId)](file:///d:/Carzy/packages/api/src/services/userService.js#5-13) — gán user, status='pending', gọi repo
+- [update(id, data, requestUser)](file:///d:/Carzy/packages/api/src/controllers/userController.js#389-457) — kiểm tra owner/admin permission
+- [delete(id, userId)](file:///d:/Carzy/packages/api/src/controllers/userController.js#337-346) — kiểm tra ownership
+- `getByUser(userId)` — danh sách xe của user
+- `getForAdmin(filters, pagination)` — kiểm tra admin role
+
+#### [MODIFY/REPLACE] [userService.js](file:///d:/Carzy/packages/api/src/services/userService.js)
+Viết lại hoàn toàn — tách JWT ra `AuthService`, userService chỉ chứa CRUD:
+- `getProfile(userId)` — gọi UserRepository.findWithStats()
+- [update(userId, data)](file:///d:/Carzy/packages/api/src/controllers/userController.js#389-457) — cập nhật profile
+- [delete(userId)](file:///d:/Carzy/packages/api/src/controllers/userController.js#337-346) — xoá user
+
+#### [NEW] [authService.js](file:///d:/Carzy/packages/api/src/services/authService.js)
+Service mới chuyên về authentication:
+- [login(email, password)](file:///d:/Carzy/packages/web/src/contexts/AuthContext.tsx#184-231) — tìm user, verify password, trả token
+- [loginAdmin(email, password)](file:///d:/Carzy/packages/api/src/controllers/userController.js#123-176) — tương tự, check role='admin'
+- [register(userData)](file:///d:/Carzy/packages/web/src/contexts/AuthContext.tsx#232-258) — check email tồn tại, tạo user, trả token
+- `refreshToken(refreshToken)` — verify refresh token, trả access token mới
+- `generateToken(userId, expiresIn)` — helper JWT
+
+---
+
+#### [MODIFY] [vehicleController.js](file:///d:/Carzy/packages/api/src/controllers/vehicleController.js)
+Thin controller — mỗi hàm chỉ 5–10 dòng:
+```
+createVehicle  → vehicleService.create()  → 201
+getAllVehicles  → vehicleService.getAll()  → 200
+getVehicleById → vehicleService.getById() → 200
+updateVehicle  → vehicleService.update()  → 200
+deleteVehicle  → vehicleService.delete()  → 200
+```
+Tất cả: `try { ... } catch (error) { next(error) }` — delegate lên globalHandler.
+
+#### [MODIFY] [userController.js](file:///d:/Carzy/packages/api/src/controllers/userController.js)
+Thin controller — xoá JWT logic, xoá DB queries, chỉ gọi service.
+
+#### [NEW] [authController.js](file:///d:/Carzy/packages/api/src/controllers/authController.js)
+Controller mới cho auth endpoints (login, register, currentUser, refresh token).
+
+#### [MODIFY] [authRoutes.js](file:///d:/Carzy/packages/api/src/routes/authRoutes.js)
+Trỏ sang authController thay vì userController.
+
+---
+
+#### [NEW] [eventBus.js](file:///d:/Carzy/packages/api/src/events/eventBus.js)
+Node.js EventEmitter singleton — channel truyền sự kiện.
+
+#### [NEW] [vehicleEventHandler.js](file:///d:/Carzy/packages/api/src/events/handlers/vehicleEventHandler.js)
+Lắng nghe `vehicle:approved`, `vehicle:rejected` → gọi notificationUtil.
+Thay thế việc gọi notificationUtil trực tiếp trong vehicleController.
+
+---
+
+### B. FRONTEND — Custom Hooks + Tách Component
+
+#### [NEW] [useVehicleSearch.ts](file:///d:/Carzy/packages/web/src/hooks/useVehicleSearch.ts)
+Custom hook tách toàn bộ search logic khỏi Navbar:
+- `query`, `results`, `isLoading`, `showResults`
+- [handleSearch()](file:///d:/Carzy/packages/web/src/components/Navbar.tsx#52-60), [handleQueryChange()](file:///d:/Carzy/packages/web/src/components/Navbar.tsx#61-88), [handleResultClick()](file:///d:/Carzy/packages/web/src/components/Navbar.tsx#89-94)
+
+#### [NEW] [useVehicles.ts](file:///d:/Carzy/packages/web/src/hooks/useVehicles.ts)
+Custom hook fetch danh sách xe với filter và pagination.
+
+#### [NEW] [Components: NavSearchBar, NavUserMenu, NavCategoryMenu, NavMobileMenu]
+- [NEW] [NavSearchBar.tsx](file:///d:/Carzy/packages/web/src/components/navbar/NavSearchBar.tsx)
+- [NEW] [NavUserMenu.tsx](file:///d:/Carzy/packages/web/src/components/navbar/NavUserMenu.tsx)
+- [NEW] [NavCategoryMenu.tsx](file:///d:/Carzy/packages/web/src/components/navbar/NavCategoryMenu.tsx)
+- [NEW] [NavMobileMenu.tsx](file:///d:/Carzy/packages/web/src/components/navbar/NavMobileMenu.tsx)
+
+#### [MODIFY] [Navbar.tsx](file:///d:/Carzy/packages/web/src/components/Navbar.tsx)
+Từ 708 dòng → ~80 dòng: chỉ import và compose các sub-components.
+
+---
+
+## Thứ Tự Thực Hiện (tránh break app)
+
+```
+1. [API] BaseRepository → VehicleRepository → UserRepository
+2. [API] AuthService → VehicleService (rewrite) → UserService (rewrite)
+3. [API] AuthController (mới)
+4. [API] Thin VehicleController + UserController
+5. [API] EventBus + vehicleEventHandler
+6. [API] Cập nhật authRoutes trỏ sang authController
+7. [WEB] useVehicleSearch hook
+8. [WEB] Tách Navbar components
+```
+
+## Verification Plan
+
+### Automated Tests
+```bash
+npm test  # 30/30 unit tests phải vẫn PASS
+```
+
+### Manual — API
+```
+POST /api/auth/register    → 201 (user created)
+POST /api/auth/login       → 200 + token
+GET  /api/auth/current-user → 200 user profile
+GET  /api/vehicles         → 200 + pagination
+POST /api/vehicles         → 201 (with valid body)
+PUT  /api/vehicles/:id     → 200 hoặc 403 nếu sai user
+DELETE /api/vehicles/:id   → 200 hoặc 403
+```
+
+> [!IMPORTANT]
+> Vì đây là refactor thuần túy, response format của tất cả API phải giữ nguyên y hệt như trước để frontend không bị ảnh hưởng.
+
+
+## Mục Tiêu
+Cải thiện nền móng của API mà **không thay đổi business logic**, chỉ tập trung vào: bảo mật, consistency và maintainability.
+
+## Phạm Vi Thay Đổi
+
+---
+
+### 1. Cài Winston Logger
+
+#### [MODIFY] [package.json](file:///d:/Carzy/packages/api/package.json)
+Thêm `winston` vào dependencies.
+
+---
+
+### 2. Xóa console.log Debug
+
+#### [MODIFY] [vehicleController.js](file:///d:/Carzy/packages/api/src/controllers/vehicleController.js)
+Xóa 8 `console.log` debug (bao gồm log Cloudinary config). Giữ lại `console.error` và chuyển sang `logger.error`.
+
+#### [MODIFY] [userController.js](file:///d:/Carzy/packages/api/src/controllers/userController.js)
+Xóa 6 `console.log` debug (upload avatar, cover, KYC). Giữ lại `console.error` và chuyển sang `logger.error`.
+
+#### [MODIFY] [userRoutes.js](file:///d:/Carzy/packages/api/src/routes/userRoutes.js)
+Xóa `console.log` Cloudinary config (4 dòng) và xóa `logUploadMiddleware` debug (3 console.log bên trong).
+
+#### [MODIFY] [index.js](file:///d:/Carzy/packages/api/src/index.js)
+Xóa `console.log` Cloudinary config (lines 58–62).
+
+---
+
+### 3. Tạo Các File Mới
+
+#### [NEW] [logger.js](file:///d:/Carzy/packages/api/src/utils/logger.js)
+Winston logger với 2 transport: Console (dev) + silent (prod có thể mở rộng). Dev hiện debug, prod chỉ info trở lên.
+
+#### [NEW] [errors.js](file:///d:/Carzy/packages/api/src/utils/errors.js)
+Custom error classes: [AppError](file:///d:/Carzy/packages/api/src/utils/errors.js#7-15), [AuthError](file:///d:/Carzy/packages/api/src/utils/errors.js#16-21), [ForbiddenError](file:///d:/Carzy/packages/api/src/utils/errors.js#22-27), [NotFoundError](file:///d:/Carzy/packages/api/src/utils/errors.js#28-33), [ConflictError](file:///d:/Carzy/packages/api/src/utils/errors.js#34-39).
+
+#### [NEW] [errorHandler.js](file:///d:/Carzy/packages/api/src/middleware/errorHandler.js)
+Global error handler — bắt tất cả lỗi theo dạng `{ status, message }`. Đăng ký cuối cùng trong [index.js](file:///d:/Carzy/packages/api/src/index.js).
+
+#### [NEW] [validate.js](file:///d:/Carzy/packages/api/src/middleware/validators/validate.js)
+Helper middleware: đọc kết quả từ `express-validator` và trả về `422` nếu có lỗi.
+
+#### [NEW] [authValidators.js](file:///d:/Carzy/packages/api/src/middleware/validators/authValidators.js)
+Validators cho: [register](file:///d:/Carzy/packages/web/src/contexts/AuthContext.tsx#232-258) (email, password ≥8 ký tự, phone 10-11 số, full_name bắt buộc) và [login](file:///d:/Carzy/packages/web/src/contexts/AuthContext.tsx#184-231) (email, password bắt buộc).
+
+#### [NEW] [vehicleValidators.js](file:///d:/Carzy/packages/api/src/middleware/validators/vehicleValidators.js)
+Validators cho [createVehicle](file:///d:/Carzy/packages/api/src/controllers/vehicleController.js#5-86): type đúng enum, price > 0, year hợp lệ, title/make/model bắt buộc.
+
+#### [NEW] [authRoutes.js](file:///d:/Carzy/packages/api/src/routes/authRoutes.js)
+Tách 3 auth endpoints (`/login`, `/register`, `/current-user`) ra file riêng, áp dụng validators.
+
+---
+
+### 4. Cập Nhật File Hiện Có
+
+#### [MODIFY] [index.js](file:///d:/Carzy/packages/api/src/index.js)
+- Xóa 3 dòng auth routes hardcoded
+- Mount `authRoutes` tại `/api/auth`
+- Đăng ký [errorHandler](file:///d:/Carzy/packages/api/src/middleware/errorHandler.js#3-74) middleware **cuối cùng**
+- Thay `console.log`/`console.error` bằng `logger`
+
+#### [MODIFY] [Vehicle.js](file:///d:/Carzy/packages/api/src/models/Vehicle.js)
+- Thêm 5 indexes: `{type,status}`, `{make,model}`, `{price}`, `{user,status}`, full-text search `{title,make,model}`
+- Chuyển sang `timestamps: true` (xoá pre-save hook timestamp thủ công)
+
+#### [MODIFY] [User.js](file:///d:/Carzy/packages/api/src/models/User.js)
+- Chuyển sang `timestamps: true` với `{ createdAt: 'created_at', updatedAt: 'updated_at' }`
+- Xóa `created_at`, `updated_at` field và pre-save hook timestamp thủ công
+
+#### [MODIFY] [vehicleRoutes.js](file:///d:/Carzy/packages/api/src/routes/vehicleRoutes.js)
+- Xóa `console.error` inline, áp dụng `vehicleValidators` cho POST `/`
+
+#### [MODIFY] [authRoutes.js (mới)/ userRoutes.js](file:///d:/Carzy/packages/api/src/routes/userRoutes.js)
+- Xóa `/register` và `/login` khỏi userRoutes (đã chuyển sang authRoutes)
+
+---
+
+## Verification Plan
+
+### Automated Tests
+Chạy test suite hiện có (không thay đổi test files):
+
+```bash
+# Từ thư mục root d:\Carzy
+npm test
+```
+
+Expected: tất cả 3 test files (userController, vehicleController, favoriteController) vẫn PASS vì tests dùng mock, không phụ thuộc vào logger hay validator middleware.
+
+### Manual Verification (sau khi chạy `npm run api`)
+
+#### Test 1 — Server khởi động thành công
+```bash
+cd d:\Carzy && npm run api
+# Expected: "Server is running on port 5000" (qua logger, không phải console.log)
+# Expected: KHÔNG còn log "Cloudinary Configuration: {...}"
+```
+
+#### Test 2 — Validator hoạt động (register với data lỗi)
+```
+POST http://localhost:5000/api/auth/register
+Body: { "email": "khongphailmail", "password": "123" }
+Expected response 422:
+{
+  "status": "validation_error",
+  "errors": [
+    { "field": "email", "message": "..." },
+    { "field": "password", "message": "..." }
+  ]
+}
+```
+
+#### Test 3 — Auth routes vẫn hoạt động (login bình thường)
+```
+POST http://localhost:5000/api/auth/login
+Body: { "email": "user@test.com", "password": "correctpassword" }
+Expected: 200 với token (hoặc 401 nếu sai pass — đúng behavior)
+```
+
+#### Test 4 — Error handler trả về format chuẩn
+```
+GET http://localhost:5000/api/vehicles/invalidobjectid
+Expected response 500 (hoặc 400):
+{ "status": "error", "message": "..." }
+```
+
+> [!NOTE]
+> Việc thay đổi `timestamps` trong Model (từ manual sang `{ timestamps: true }`) hoàn toàn tương thích với dữ liệu MongoDB hiện có — Mongoose chỉ thay đổi cách nó tự động set giá trị, không migrate data.

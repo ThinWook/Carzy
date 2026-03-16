@@ -24,6 +24,9 @@ const favoriteRoutes = require('./routes/favoriteRoutes');
 // Import global error handler
 const errorHandler = require('./middleware/errorHandler');
 
+// Register event handlers (Observer pattern listeners)
+require('./events/handlers/vehicleEventHandler');
+
 // Connect to database
 connectDB();
 
