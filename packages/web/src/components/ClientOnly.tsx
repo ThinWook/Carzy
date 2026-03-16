@@ -7,6 +7,14 @@ export default function ClientOnly({ children }: { children: React.ReactNode }) 
 
   useEffect(() => {
     setHasMounted(true)
+    try {
+      if (typeof window !== 'undefined') {
+        ;(window as any).__HYDRATED__ = true
+      }
+      if (typeof document !== 'undefined' && document.body) {
+        document.body.dataset.hydrated = 'true'
+      }
+    } catch (e) {}
   }, [])
 
   if (!hasMounted) {

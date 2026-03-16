@@ -7,40 +7,47 @@ const userController = {
   // Register new user
   registerUser: async (req, res) => {
     try {
-      const { 
-        full_name, 
-        email, 
-        phone_number, 
-        address, 
-        password, 
-        role = 'user' // Default to user if not specified
+      const {
+        full_name,
+        email,
+        phone_number,
+        address,
+        password,
+        role = "user", // Default to user if not specified
       } = req.body;
 
-      // Luôn đặt role là 'user', không cho phép đăng ký tài khoản admin
-      const userRole = 'user';
+      // Basic validation: email and password required
+      if (!email || !password) {
+        return res
+          .status(400)
+          .json({ message: "Email and password are required" });
+      }
+
+      // Always force role to 'user' for registrations
+      const userRole = "user";
 
       // Check if user exists
       const existingUser = await User.findOne({ email });
       if (existingUser) {
-        return res.status(400).json({ message: 'Email đã được sử dụng' });
+        return res.status(409).json({ message: "email already registered" });
       }
 
-      // Create new user
+      // Create new user (model is responsible for hashing in pre-save)
       const user = await User.create({
         full_name,
         email,
         phone_number,
         address,
-        password_hash: password, // Will be hashed by pre-save hook
-        role: userRole // Luôn sử dụng 'user', bỏ qua giá trị role từ request
+        password_hash: password,
+        role: userRole,
       });
 
       // Generate JWT token
       const token = jwt.sign({ id: user._id }, process.env.JWT_SECRET, {
-        expiresIn: '30d'
+        expiresIn: "30d",
       });
 
-      // Return new user (excluding password)
+      // Return new user (excluding password/hash)
       res.status(201).json({
         _id: user._id,
         full_name: user.full_name,
@@ -52,10 +59,15 @@ const userController = {
         cover_image_url: user.cover_image_url,
         rating: user.rating,
         created_at: user.created_at,
-        token
       });
     } catch (error) {
-      res.status(400).json({ message: error.message });
+      // Handle duplicate key (race condition) as conflict
+      if (error && (error.code === 11000 || error.keyPattern)) {
+        return res.status(409).json({ message: "email already registered" });
+      }
+
+      // Unknown / DB errors
+      res.status(500).json({ message: error.message });
     }
   },
 
