@@ -122,15 +122,16 @@ export const NotificationProvider: React.FC<{ children: React.ReactNode }> = ({ 
     }
   }, [isAuthenticated, user?._id]);
 
-  // Tải lại số lượng thông báo chưa đọc mỗi phút
+  // Bỏ tải lại số lượng thông báo chưa đọc mỗi phút để tránh spam log server
+  // Bạn có thể mở lại với thời gian dài hơn (vd: 5 phút) nếu cần realtime
   useEffect(() => {
     if (!isAuthenticated) return;
     
-    const intervalId = setInterval(() => {
-      fetchUnreadCount();
-    }, 60000); // 60 giây
+    // const intervalId = setInterval(() => {
+    //   fetchUnreadCount();
+    // }, 60000 * 5); // 5 phút
     
-    return () => clearInterval(intervalId);
+    // return () => clearInterval(intervalId);
   }, [isAuthenticated]);
 
   const value = {

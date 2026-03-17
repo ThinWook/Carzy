@@ -35,17 +35,18 @@ export interface Vehicle {
   };
   createdAt?: string;
   updatedAt?: string;
+  updated_at?: string;
   status?: 'pending' | 'approved' | 'rejected' | 'sold' | 'removed';
   views_count?: number;
 }
 
 export interface FilterProps {
-  manufacturer: string;
-  year: number;
-  fuel: string;
-  limit: number;
+  manufacturer?: string;
+  year?: number;
+  fuel?: string;
+  limit?: number;
   page?: number;
-  model: string;
+  model?: string;
   search?: string;
 }
 
@@ -57,6 +58,7 @@ export interface OptionProps {
 export interface CustomFilterProps {
   title: string;
   options: OptionProps[];
+  setFilter?: (value: any) => void;
 }
 
 export interface ShowMoreProps {

@@ -5,16 +5,18 @@ import Image from 'next/image';
 // Định nghĩa kiểu dữ liệu cho props theo cấu trúc mới
 interface Vehicle {
   _id: string;
-  title: string;
+  title?: string;
   price: number;
   year: number;
-  mileage: number;
+  mileage?: number;
   images: string[];
   location: string;
   user: {
-    _id: string;
-    full_name: string;
-    phone_number: string;
+    _id?: string;
+    full_name?: string;
+    name?: string;
+    phone_number?: string;
+    phone?: string;
     email?: string;
     avatar_url?: string;
     rating?: number;
@@ -22,9 +24,11 @@ interface Vehicle {
   type: string;
   make: string;
   model: string;
-  created_at: string;
-  updated_at: string;
-  status: string;
+  created_at?: string;
+  createdAt?: string;
+  updated_at?: string;
+  updatedAt?: string;
+  status?: string;
 }
 
 interface VehicleCardProps {
@@ -84,7 +88,7 @@ export default function VehicleCard({ vehicle }: VehicleCardProps) {
           <div className="flex items-center text-xs text-gray-500 mb-2">
             <span className="font-medium">Năm: {year}</span>
             <span className="mx-1">•</span>
-            <span className="font-medium">{mileage.toLocaleString()} km</span>
+            <span className="font-medium">{mileage?.toLocaleString() || 0} km</span>
             <span className="mx-1">•</span>
             <span>{location}</span>
           </div>
@@ -104,7 +108,7 @@ export default function VehicleCard({ vehicle }: VehicleCardProps) {
                     }}
                   />
                   <div>
-                    <p className="text-sm font-bold text-blue-600">{user?.full_name || "Thương lượng"}</p>
+                    <p className="text-sm font-bold text-blue-600">{user?.full_name || user?.name || "Thương lượng"}</p>
                     <div className="flex items-center">
                       <span className="text-xs text-yellow-500 mr-1">{user?.rating || '5.0'}</span>
                       <div className="flex">
@@ -115,7 +119,7 @@ export default function VehicleCard({ vehicle }: VehicleCardProps) {
                         ))}
                       </div>
                     </div>
-                    <p className="text-xs text-gray-600">SĐT: {user?.phone_number || ""}</p>
+                    <p className="text-xs text-gray-600">SĐT: {user?.phone_number || user?.phone || ""}</p>
                   </div>
                 </div>
               </div>

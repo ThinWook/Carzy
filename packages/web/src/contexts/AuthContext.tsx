@@ -49,17 +49,17 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const pathname = usePathname()
 
   const clearAuthData = useCallback(async () => {
-    setUser(null)
-    setIsAuthenticated(false)
-    localStorage.removeItem('userData')
+    setUser(null);
+    setIsAuthenticated(false);
+    localStorage.removeItem('userData');
     try {
-      if (pathname !== '/auth/login') {
-        await apiClient.post(endpoints.auth.logout)
+      if (typeof window !== 'undefined' && window.location.pathname !== '/auth/login') {
+        await apiClient.post(endpoints.auth.logout);
       }
     } catch {
       // Ignore errors on logout
     }
-  }, [pathname])
+  }, []);
 
   const fetchUserData = useCallback(async () => {
     try {

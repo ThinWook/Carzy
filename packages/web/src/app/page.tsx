@@ -16,20 +16,25 @@ export default function Home() {
   const searchParams = useSearchParams();
   const { user, isAuthenticated, isLoading: authLoading } = useAuth();
 
+  // Extract primitive values from searchParams to use as stable dependencies
+  const manufacturerParam = searchParams.get('manufacturer') || '';
+  const yearParam = Number(searchParams.get('year')) || new Date().getFullYear();
+  const fuelParam = searchParams.get('fuel') || '';
+  const modelParam = searchParams.get('model') || '';
+  const pageParam = Number(searchParams.get('page')) || 1;
+  const limitParam = Number(searchParams.get('limit')) || 10;
+
   useEffect(() => {
     const getVehicles = async () => {
       setIsLoading(true);
       try {
-        const currentPage = Number(searchParams.get('page')) || 1;
-        const pageSize = Number(searchParams.get('limit')) || 10;
-        
         const result = await fetchVehicles({
-          manufacturer: searchParams.get('manufacturer') || '',
-          year: Number(searchParams.get('year')) || new Date().getFullYear(),
-          fuel: searchParams.get('fuel') || '',
-          limit: pageSize,
-          page: currentPage,
-          model: searchParams.get('model') || '',
+          manufacturer: manufacturerParam,
+          year: yearParam,
+          fuel: fuelParam,
+          limit: limitParam,
+          page: pageParam,
+          model: modelParam,
         });
         
         setAllVehicles(result.data);
@@ -43,7 +48,7 @@ export default function Home() {
     };
 
     getVehicles();
-  }, [searchParams]);
+  }, [manufacturerParam, yearParam, fuelParam, limitParam, pageParam, modelParam]);
 
   const isDataEmpty = !Array.isArray(allVehicles) || allVehicles.length < 1 || !allVehicles;
 

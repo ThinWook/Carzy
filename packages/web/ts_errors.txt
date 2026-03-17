@@ -1,0 +1,10 @@
+src/app/vehicles/search/page.tsx(27,44): error TS2345: Argument of type '{ search: string; limit: number; page: number; }' is not assignable to parameter of type 'FilterProps'.
+  Type '{ search: string; limit: number; page: number; }' is missing the following properties from type 'FilterProps': manufacturer, year, fuel, model
+src/app/vehicles/search/page.tsx(70,43): error TS2339: Property 'totalPages' does not exist on type '{ total: number; page: number; limit: number; pages: number; }'.
+src/app/vehicles/search/page.tsx(72,33): error TS2339: Property 'prev' does not exist on type '{ total: number; page: number; limit: number; pages: number; }'.
+src/app/vehicles/search/page.tsx(74,82): error TS2339: Property 'currentPage' does not exist on type '{ total: number; page: number; limit: number; pages: number; }'.
+src/app/vehicles/search/page.tsx(80,33): error TS2339: Property 'next' does not exist on type '{ total: number; page: number; limit: number; pages: number; }'.
+src/app/vehicles/search/page.tsx(82,82): error TS2339: Property 'currentPage' does not exist on type '{ total: number; page: number; limit: number; pages: number; }'.
+src/components/CustomFilter.tsx(6,41): error TS2339: Property 'setFilter' does not exist on type 'CustomFilterProps'.
+src/components/ShowMore.tsx(23,11): error TS2322: Type '{ title: string; btnType: string; containerStyles: string; handleClick: () => void; }' is not assignable to type 'IntrinsicAttributes & CustomButtonProps'.
+  Property 'btnType' does not exist on type 'IntrinsicAttributes & CustomButtonProps'.

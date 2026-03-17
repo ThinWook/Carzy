@@ -1,1 +1,8 @@
-{}
+{
+  "/favicon.ico/route": "app/favicon.ico/route.js",
+  "/_not-found/page": "app/_not-found/page.js",
+  "/(admin)/page": "app/(admin)/page.js",
+  "/(admin)/vehicles/page": "app/(admin)/vehicles/page.js",
+  "/(admin)/users/page": "app/(admin)/users/page.js",
+  "/(full-width-pages)/(auth)/signin/page": "app/(full-width-pages)/(auth)/signin/page.js"
+}

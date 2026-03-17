@@ -69,17 +69,18 @@ app.use(requestLogger);
 app.use(express.json({ limit: '50mb' }));
 app.use(express.urlencoded({ extended: true, limit: '50mb' }));
 
-// Rate limiter cho các api auth để chống brute force
+// Cấu hình Rate limiter cho auth (Bỏ qua ở môi trường dev để dễ phát triển)
+const limitMax = process.env.NODE_ENV === 'production' ? 10 : 100;
 const authLimiter = rateLimit({
   windowMs: 15 * 60 * 1000, // 15 phút
-  max: 10, // Giới hạn 10 requests mỗi IP
+  max: limitMax, 
   message: { message: 'Quá nhiều yêu cầu đăng nhập từ IP này, vui lòng thử lại sau 15 phút' },
   standardHeaders: true,
   legacyHeaders: false,
 });
 
 // Routes
-app.use('/api/auth', authLimiter, authRoutes);
+app.use('/api/auth', process.env.NODE_ENV === 'production' ? authLimiter : (req, res, next) => next(), authRoutes);
 app.use('/api/vehicles', vehicleRoutes);
 app.use('/api/users', userRoutes);
 app.use('/api/chat', chatRoutes);

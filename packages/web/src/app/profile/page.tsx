@@ -20,21 +20,20 @@ export default function Profile() {
     sold: 0
   })
 
-  // Refresh user data when component mounts
+  // Refresh user data when component mounts (removed to prevent loop)
   useEffect(() => {
-    if (isAuthenticated) {
-      refreshUserData();
-    }
-  }, [isAuthenticated, refreshUserData]);
+    // Only refresh if we explicitly need to, avoiding infinite re-renders
+    // if (isAuthenticated) {
+    //   refreshUserData();
+    // }
+  }, []);
 
   // Fetch user vehicles
   useEffect(() => {
     const fetchUserVehicles = async () => {
       if (isAuthenticated && user) {
         try {
-          // Make sure user data is refreshed first to ensure token is valid
-          await refreshUserData();
-          
+          // Direct API call
           const data = await vehicleApi.getUserVehicles();
           
           // Make sure we received valid data
@@ -64,7 +63,7 @@ export default function Profile() {
     };
 
     fetchUserVehicles();
-  }, [isAuthenticated, user, refreshUserData, router]);
+  }, [isAuthenticated, user, router]);
 
   // Authentication redirect - MUST be called unconditionally
   useEffect(() => {

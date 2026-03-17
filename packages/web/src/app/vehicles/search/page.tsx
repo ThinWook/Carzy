@@ -67,19 +67,19 @@ export default function SearchPage() {
                   ))}
                 </div>
 
-                {pagination && pagination.totalPages > 1 && (
+                {pagination && pagination.pages > 1 && (
                   <div className="mt-16 flex justify-center gap-5">
-                    {pagination.prev && (
+                    {pagination.page > 1 && (
                       <Link 
-                        href={`/vehicles/search?query=${query}&page=${pagination.currentPage - 1}`}
+                        href={`/vehicles/search?query=${query}&page=${pagination.page - 1}`}
                         className="px-4 py-2 bg-orange-100 text-orange-600 rounded-md hover:bg-orange-200"
                       >
                         Trang trước
                       </Link>
                     )}
-                    {pagination.next && (
+                    {pagination.page < pagination.pages && (
                       <Link 
-                        href={`/vehicles/search?query=${query}&page=${pagination.currentPage + 1}`}
+                        href={`/vehicles/search?query=${query}&page=${pagination.page + 1}`}
                         className="px-4 py-2 bg-orange-100 text-orange-600 rounded-md hover:bg-orange-200"
                       >
                         Trang tiếp
